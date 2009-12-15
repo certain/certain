@@ -11,6 +11,7 @@ import cert
 import StringIO
 from optparse import OptionParser
 from os import path
+from OpenSSL import crypto
 
 configfile = "certmgr.cfg"
 
@@ -134,14 +135,24 @@ if __name__ == "__main__":
                 cakey = "%s/%s" % (
                     config.get('global', 'CAPrivatePath'),
                     config.get('global', 'CAKey'))
-                cert.make_ca(cakey, capub, CN, None,
+                (keyobj, certobj) = cert.make_ca(CN,
                              config.get('ca', 'OU'),
                              config.get('ca', 'O'),
                              config.get('ca', 'L'),
                              config.get('ca', 'ST'),
                              config.get('ca', 'C'),
                              config.getint('ca', 'CALifetime'))
+
+                with open(cakey, 'w') as f:
+                    f.write(
+                        crypto.dump_privatekey(crypto.FILETYPE_PEM, keyobj))
+
+                with open(capub, 'w') as f:
+                    f.write(
+                        crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+
         else:
+            #Make client key and CSR
             try:
                 CN = config.get('cert', 'CN')
             except ConfigParser.NoOptionError:
@@ -152,15 +163,26 @@ if __name__ == "__main__":
 
             if check_certs(pub, key) == "err":
 
+                keyfile = "%s/%s.key" % (config.get('global', 'PrivatePath'),
+                                         CN)
                 csrfile = "%s/%s.csr" % (config.get('global', 'CSRCache'),
                                          CN)
-                key = cert.make_key(key, config.getint('cert', 'Bits'))
-                csr = cert.make_csr(key, CN, csrfile,
-                             config.get('cert', 'OU'),
-                             config.get('cert', 'O'),
-                             config.get('cert', 'L'),
-                             config.get('cert', 'ST'),
-                             config.get('cert', 'C'))
+                key = cert.make_key(config.getint('cert', 'Bits'))
+                csr = cert.make_csr(key, CN,
+                                    config.get('cert', 'OU'),
+                                    config.get('cert', 'O'),
+                                    config.get('cert', 'L'),
+                                    config.get('cert', 'ST'),
+                                    config.get('cert', 'C'))
+
+                with open(keyfile, 'w') as f:
+                    f.write(
+                        crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+
+                with open(csrfile, 'w') as f:
+                    f.write(crypto.dump_certificate_request(
+                        crypto.FILETYPE_PEM, csr))
+
 
     if options.daemon:
         if config.getint('manager', 'IsMaster') == 1:
