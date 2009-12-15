@@ -128,11 +128,6 @@ def get_cert_info(cert):
 
     """
 
-    try:
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
-    except crypto.Error:
-        raise
-
     ca = cert.get_issuer()
     certinf = cert.get_subject()
 
