@@ -4,10 +4,9 @@
 from OpenSSL import crypto
 
 
-def make_key(keyfile=None, bits=2048):
+def make_key(bits=2048):
     """Create RSA key
 
-    keyfile: If defined, file to write key to
     bits: Default bits for RSA key (defaults to 2048)
 
     Returns the Pkey object
@@ -16,14 +15,11 @@ def make_key(keyfile=None, bits=2048):
 
     key = crypto.PKey()
     key.generate_key(crypto.TYPE_RSA, bits)
-    if keyfile:
-        with open(keyfile, 'w') as f:
-            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
 
-    return crypto.dump_privatekey(crypto.FILETYPE_PEM, key)
+    return key
 
 
-def make_csr(key, CN, csrfile=None,
+def make_csr(key, CN,
              OU="CertMgr Dept", O="CertMgr Org",
              L="CertMgr City", ST="CertMgr State", C="UK"):
 
@@ -31,7 +27,6 @@ def make_csr(key, CN, csrfile=None,
 
     key: String containing key
     CN: Common Name
-    csr: File to write certificate request to
     CN: Common Name (aka CA hostname)
     cacsrfile: File to write Certificate Request to
     OU: Organisational Unit (CertMgr Dept)
@@ -40,6 +35,7 @@ def make_csr(key, CN, csrfile=None,
     ST: State (CertMgr State)
     C: Country (UK)
 
+    Returns an X509 object
     """
 
     csr = crypto.X509Req()
@@ -51,67 +47,46 @@ def make_csr(key, CN, csrfile=None,
     name.OU = OU
     name.CN = CN
 
-    try:
-        key = crypto.load_privatekey(crypto.FILETYPE_PEM, key)
-    except crypto.Error:
-        raise
-
     csr.set_pubkey(key)
     csr.sign(key, 'md5')
-    if csrfile:
-        with open(csrfile, 'w') as f:
-            f.write(crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr))
 
-    return crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr)
+    return csr
 
 
-def sign_csr(cakeyfile, cacertfile, csr,
-             signedcertfile=None, lifetime=60 * 60 * 24 * 365):
+def sign_csr(cakeyfile, cacertfile, csr, lifetime=60 * 60 * 24 * 365):
 
     """Sign certificate request.
 
     cakeyfile: CA key file
     cacertfile: CA Public Certificate file
     csr: Certificate Request string
-    signedcertfile: File to write the signed certificate to
     lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
 
+    Returns X509 object
     """
 
     cakey = key_from_file(cakeyfile)
     cacert = cert_from_file(cacertfile)
 
-    try:
-        csr = crypto.load_certificate_request(crypto.FILETYPE_PEM, csr)
-    except crypto.Error:
-        raise
-
     cert = crypto.X509()
     cert.set_pubkey(csr.get_pubkey())
     cert.set_subject(csr.get_subject())
-    ##FIXME##
+    ##FIXME## Serial numbers should increment!
     cert.set_serial_number(1)
     cert.gmtime_adj_notBefore(0)
     cert.gmtime_adj_notAfter(lifetime)
     cert.set_issuer(cacert.get_subject())
     cert.sign(cakey, 'md5')
-    if signedcertfile:
-        with open(signedcertfile, 'w') as f:
-            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
 
-    return crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
+    return cert
 
 
-def make_ca(cakeyfile, cacertfile, CN, cacsrfile=None,
-            OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
+def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
 
     """Generate a certificate authority
 
-    cakeyfile: File to write Private Part of cert to
-    cacertfile: File to write Public part of cert to
     CN: Common Name
-    cacsrfile: File to write Certificate Request to
     OU: Organisational Unit (CertMgr Dept)
     O: Organisation (CertMgr Org)
     L: Location (CertMgr City)
@@ -121,9 +96,8 @@ def make_ca(cakeyfile, cacertfile, CN, cacsrfile=None,
 
     """
 
-    key = make_key(cakeyfile, 4096)
-    csr = crypto.load_certificate_request(crypto.FILETYPE_PEM,
-                                          make_csr(key, CN, cacsrfile))
+    key = make_key(4096)
+    csr = make_csr(key, CN)
 
     cacert = crypto.X509()
     cacert.set_issuer(csr.get_subject())
@@ -133,12 +107,9 @@ def make_ca(cakeyfile, cacertfile, CN, cacsrfile=None,
     cacert.set_serial_number(0)
     cacert.gmtime_adj_notBefore(0)
     cacert.gmtime_adj_notAfter(lifetime)
-    cacert.sign(crypto.load_privatekey(crypto.FILETYPE_PEM, key), 'md5')
-    if cacertfile:
-        with open(cacertfile, 'w') as f:
-            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+    cacert.sign(key, 'md5')
 
-    return crypto.dump_certificate(crypto.FILETYPE_PEM, cacert)
+    return (key, cacert)
 
 
 def get_cert_info(cert):
@@ -187,14 +158,7 @@ def get_csr_info(csr):
 
     """
 
-    try:
-        csr = crypto.load_certificate_request(crypto.FILETYPE_PEM, csr)
-    except crypto.Error:
-        raise
-
-    csrinf = csr.get_subject()
-
-    return (csrinf)
+    return (csr.get_subject())
 
 
 def key_from_file(keyfile):
