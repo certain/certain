@@ -4,6 +4,7 @@
 
 import sys
 import socket
+import time
 import select
 import ConfigParser
 import threading
@@ -33,10 +34,6 @@ logconsole = logging.StreamHandler()
 logconsole.setFormatter(logformat)
 logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 log.addHandler(logconsole)
-
-
-class HostVerifyError(Exception):
-    log.error("Hostname doesn't match certificate CN value")
 
 
 class MsgHandlerThread(threading.Thread):
@@ -88,6 +85,11 @@ class MsgHandlerThread(threading.Thread):
             with open(csrfile, 'w') as f:
                 log.info("Writing CSR: %s", csrfile)
                 f.write(self.msg)
+
+
+class HostVerifyError(Exception):
+    """Errors in Certificate Hostname Verification"""
+    log.error("Hostname doesn't match certificate CN value")
 
 
 def check_certs(pub, key):
@@ -168,6 +170,38 @@ def make_certs():
                         crypto.FILETYPE_PEM, csr))
 
 
+def check_status():
+    #Check certs status
+
+    try:
+        CN = config.get('cert', 'CN')
+    except:
+        CN = socket.getfqdn()
+
+    pub = "%s/%s.crt" % (config.get('global', 'CertPath'), CN)
+    key = "%s/%s.key" % (config.get('global', 'PrivatePath'), CN)
+
+    try:
+        pubfile = open(pub)
+    except IOError:
+        log.error("Public certificate file missing: %s", pub)
+
+    try:
+        keyfile = open(key)
+    except IOError:
+        log.error("Private key file missing: %s", key)
+
+    certinf = crypto.load_certificate(
+        crypto.FILETYPE_PEM, pubfile.read())
+
+    #Get cert time without timezone chars
+    notafter = certinf.get_notAfter()[0:14]
+    #If notafter is less than a week away...
+    if (time.mktime(time.strptime(notafter, '%Y%m%d%H%M%S'))
+        - time.time()) < 604800:
+        log.warn("Certificate %s expires in less than 7 days!", pubfile)
+
+
 def send_csr():
     #Send csr to host
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -223,7 +257,7 @@ if __name__ == "__main__":
                       dest="file",
                       help="Specifies the CSR file to be sent with --send.")
 
-    parser.set_defaults(cminit=False, daemon=False, send=False)
+    parser.set_defaults(makecerts=False, daemon=False, send=False)
     (options, args) = parser.parse_args()
 
     if options.makecerts:
@@ -238,3 +272,6 @@ if __name__ == "__main__":
 
     if options.send:
         send_csr()
+
+    #If no options passed, simply check certs and expiry and report
+    check_status()
