@@ -12,6 +12,8 @@ import StringIO
 from optparse import OptionParser
 from os import path
 from OpenSSL import crypto
+import logging
+import logging.handlers
 
 configfile = "certmgr.cfg"
 
@@ -25,6 +27,18 @@ except (Exception), e:
     print e
     sys.exit(1)
 
+log = logging.getLogger('certmgr')
+log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+logformat = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+logconsole = logging.StreamHandler()
+logconsole.setFormatter(logformat)
+logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+log.addHandler(logconsole)
+
+
+class HostVerifyError(Exception):
+    log.error("Hostname doesn't match certificate CN value")
+
 
 class MsgHandlerThread(threading.Thread):
 
@@ -35,9 +49,18 @@ class MsgHandlerThread(threading.Thread):
 
     def run(self):
 
-        csrinf = cert.get_csr_info(self.msg)
+        csrinf = cert.get_csr_info(crypto.load_certificate_request(
+            crypto.FILETYPE_PEM, self.msg))
+
+        if csrinf.CN != socket.getfqdn():
+            if config.get('manager', 'HostVerify') == "true":
+                raise HostVerifyError
+            elif config.get('manager', 'HostVerify') == "warn":
+                log.warn("Hostname: %s doesn't match certificate CN: %s",
+                         socket.getfqdn(), csrinf.CN)
 
         if config.getint('manager', 'AutoSign') == 1:
+            log.info("Auto-signing enabled")
             #Sign the msg straight away
             capub = "%s/%s" % (
                 config.get('global', 'CAPath'),
@@ -48,20 +71,24 @@ class MsgHandlerThread(threading.Thread):
             certfile = "%s/%s.crt" % (config.get('global', 'CertPath'),
                                       csrinf.CN)
 
-            cert.sign_csr(cakey, capub, self.msg, certfile,
+            log.info("Signing Certificate")
+            certobj = cert.sign_csr(cakey, capub,
+                          crypto.load_certificate_request(
+                              crypto.FILETYPE_PEM, self.msg),
                           config.getint('cert', 'CertLifetime'))
 
+            with open(certfile, 'w') as f:
+                log.info("Writing Certificate: %s", certfile)
+                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+
+
         else:
-            #write out csr to cache
             csrfile = "%s/%s.csr" % (config.get('global', 'CSRCache'),
                                      csrinf.CN)
 
             with open(csrfile, 'w') as f:
+                log.info("Writing CSR: %s", csrfile)
                 f.write(self.msg)
-
-#        if config.get('manager', 'HostVerify') == "true" or
-#        config.get('manager', 'HostVerify') == "warn":
-#            certs.get_cert_info(msg)
 
 
 def check_certs(pub, key):
