@@ -8,7 +8,6 @@ import select
 import ConfigParser
 import threading
 import cert
-import StringIO
 from optparse import OptionParser
 from os import path
 from OpenSSL import crypto
@@ -97,49 +96,7 @@ def check_certs(pub, key):
         return "err"
 
 
-def Daemon():
-
-    if not path.exists(config.get('global', 'CAPath') + "/" +
-                       config.get('global', 'CACert')):
-        print "Ca Certificate Missing.  Create this, or call --init."
-        sys.exit(2)
-
-    #Listen for incoming messages
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setblocking(0)
-    s.bind(('', config.getint('global', 'ManagerPort')))
-
-    while True:
-        read, write, error = select.select([s], [], [])
-        if s not in read:
-            continue
-        msg, src = s.recvfrom(65535)
-        thread = MsgHandlerThread(msg, src)
-        thread.start()
-
-
-if __name__ == "__main__":
-
-    parser = OptionParser()
-    parser.add_option("-i", "--init",
-                      action="store_true", dest="init",
-                      help="Setup certificates on your system.")
-    parser.add_option("-d", "--daemon",
-                      action="store_true", dest="daemon",
-                      help="Start Certificate Manager Daemon.")
-    parser.add_option("-s", "--send",
-                      action="store_true", dest="send",
-                      help="Send a CSR file to the Certificate Manager.")
-    parser.add_option("-f", "--file",
-                      dest="file",
-                      help="Specifies the CSR file to be sent with --send.")
-
-    parser.set_defaults(cminit=False, daemon=False, send=False)
-
-    (options, args) = parser.parse_args()
-
-    if options.init:
-
+def make_certs():
         if config.getint('manager', 'IsMaster') == 1:
             #Generate a CA if no certs exist
 
@@ -211,6 +168,67 @@ if __name__ == "__main__":
                         crypto.FILETYPE_PEM, csr))
 
 
+def send_csr():
+    #Send csr to host
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    if options.file:
+        sendfile = options.file
+    else:
+        try:
+            CN = config.get('cert', 'CN')
+        except ConfigParser.NoOptionError:
+            CN = socket.getfqdn()
+            sendfile = "%s/%s.csr" % (config.get('global', 'CSRCache'), CN)
+
+    with open(sendfile) as f:
+        s.sendto(f.read(), (config.get('global', 'ManagerAddress'),
+                            config.getint('global', 'ManagerPort')))
+
+
+def Daemon():
+
+    if not path.exists(config.get('global', 'CAPath') + "/" +
+                       config.get('global', 'CACert')):
+        log.error("Ca Certificate Missing.  Create this, or call --makecerts.")
+        sys.exit(2)
+
+    #Listen for incoming messages
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setblocking(0)
+    s.bind(('', config.getint('global', 'ManagerPort')))
+
+    while True:
+        read, write, error = select.select([s], [], [])
+        if s not in read:
+            continue
+        msg, src = s.recvfrom(65535)
+        thread = MsgHandlerThread(msg, src)
+        thread.start()
+
+
+if __name__ == "__main__":
+
+    parser = OptionParser()
+    parser.add_option("-m", "--makecerts",
+                      action="store_true", dest="makecerts",
+                      help="Setup certificates on your system.")
+    parser.add_option("-d", "--daemon",
+                      action="store_true", dest="daemon",
+                      help="Start Certificate Manager Daemon.")
+    parser.add_option("-s", "--send",
+                      action="store_true", dest="send",
+                      help="Send a CSR file to the Certificate Manager.")
+    parser.add_option("-f", "--file",
+                      dest="file",
+                      help="Specifies the CSR file to be sent with --send.")
+
+    parser.set_defaults(cminit=False, daemon=False, send=False)
+    (options, args) = parser.parse_args()
+
+    if options.makecerts:
+        make_certs()
+
     if options.daemon:
         if config.getint('manager', 'IsMaster') == 1:
             Daemon()
@@ -218,21 +236,5 @@ if __name__ == "__main__":
             print "IsMaster not set in configuration file!"
             sys.exit(2)
 
-
     if options.send:
-        #Send csr to host
-
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        if options.file:
-            sendfile = options.file
-        else:
-            try:
-                CN = config.get('cert', 'CN')
-            except ConfigParser.NoOptionError:
-                CN = socket.getfqdn()
-            sendfile = "%s/%s.csr" % (config.get('global', 'CSRCache'), CN)
-
-            with open(sendfile) as f:
-                s.sendto(f.read(), (config.get('global', 'ManagerAddress'),
-                                    config.getint('global', 'ManagerPort')))
+        send_csr()
