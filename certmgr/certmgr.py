@@ -10,7 +10,7 @@ import ConfigParser
 import threading
 import cert
 from optparse import OptionParser
-from os import path
+import os
 from OpenSSL import crypto
 import logging
 import logging.handlers
@@ -41,19 +41,19 @@ class MsgHandlerThread(threading.Thread):
     def __init__(self, msg, src):
         threading.Thread.__init__(self)
         self.msg = msg
-        self.src = src
+        self.src = socket.gethostbyaddr(src[0])[0]
 
     def run(self):
 
         csrinf = cert.get_csr_info(crypto.load_certificate_request(
             crypto.FILETYPE_PEM, self.msg))
 
-        if csrinf.CN != socket.getfqdn():
+        if csrinf.CN != self.src:
             if config.get('manager', 'HostVerify') == "true":
                 raise HostVerifyError
             elif config.get('manager', 'HostVerify') == "warn":
                 log.warn("Hostname: %s doesn't match certificate CN: %s",
-                         socket.getfqdn(), csrinf.CN)
+                         self.src, csrinf.CN)
 
         if config.getint('manager', 'AutoSign') == 1:
             log.info("Auto-signing enabled")
@@ -79,22 +79,25 @@ class MsgHandlerThread(threading.Thread):
 
 
         else:
+            #Just save the CSR for later signing (saved as self.src.csr)
             csrfile = "%s/%s.csr" % (config.get('global', 'CSRCache'),
-                                     csrinf.CN)
+                                     self.src)
 
             with open(csrfile, 'w') as f:
-                log.info("Writing CSR: %s", csrfile)
+                log.info("Writing CSR to cache: %s", csrfile)
                 f.write(self.msg)
 
 
 class HostVerifyError(Exception):
     """Errors in Certificate Hostname Verification"""
-    log.error("Hostname doesn't match certificate CN value")
+
+    def __init__(self, e=None):
+        log.error("Hostname doesn't match certificate CN value")
 
 
 def check_certs(pub, key):
 
-    if not path.exists(pub) or not path.exists(key):
+    if not os.path.exists(pub) or not os.path.exists(key):
         return "err"
 
 
@@ -110,6 +113,7 @@ def make_certs():
                 config.get('global', 'CAKey'))
 
             if check_certs(pub, key) == "err":
+                log.info("Generating CA Certificates for Master")
                 try:
                     CN = config.get('ca', 'CN')
                 except:
@@ -136,43 +140,80 @@ def make_certs():
                 with open(capub, 'w') as f:
                     f.write(
                         crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+            else:
+                log.warn("CA Certificates already exist")
 
+
+        #Make client key and CSR if needed
+        try:
+            CN = config.get('cert', 'CN')
+        except ConfigParser.NoOptionError:
+            CN = socket.getfqdn()
+
+        pub = "%s/%s.crt" % (config.get('global', 'CertPath'), CN)
+        key = "%s/%s.key" % (config.get('global', 'PrivatePath'), CN)
+
+        if check_certs(pub, key) == "err":
+            log.info("Making Key and CSR for %s", CN)
+
+            keyfile = "%s/%s.key" % (config.get('global', 'PrivatePath'),
+                                     CN)
+            csrfile = "%s/%s.csr" % (config.get('global', 'CertPath'),
+                                     CN)
+            key = cert.make_key(config.getint('cert', 'Bits'))
+            csr = cert.make_csr(key, CN,
+                                config.get('cert', 'OU'),
+                                config.get('cert', 'O'),
+                                config.get('cert', 'L'),
+                                config.get('cert', 'ST'),
+                                config.get('cert', 'C'))
+
+            with open(keyfile, 'w') as f:
+                f.write(
+                    crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+
+            with open(csrfile, 'w') as f:
+                f.write(crypto.dump_certificate_request(
+                    crypto.FILETYPE_PEM, csr))
+
+            send_csr()
         else:
-            #Make client key and CSR
-            try:
-                CN = config.get('cert', 'CN')
-            except ConfigParser.NoOptionError:
-                CN = socket.getfqdn()
-
-            pub = "%s/%s.crt" % (config.get('global', 'CertPath'), CN)
-            key = "%s/%s.key" % (config.get('global', 'PrivatePath'), CN)
-
-            if check_certs(pub, key) == "err":
-
-                keyfile = "%s/%s.key" % (config.get('global', 'PrivatePath'),
-                                         CN)
-                csrfile = "%s/%s.csr" % (config.get('global', 'CSRCache'),
-                                         CN)
-                key = cert.make_key(config.getint('cert', 'Bits'))
-                csr = cert.make_csr(key, CN,
-                                    config.get('cert', 'OU'),
-                                    config.get('cert', 'O'),
-                                    config.get('cert', 'L'),
-                                    config.get('cert', 'ST'),
-                                    config.get('cert', 'C'))
-
-                with open(keyfile, 'w') as f:
-                    f.write(
-                        crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-
-                with open(csrfile, 'w') as f:
-                    f.write(crypto.dump_certificate_request(
-                        crypto.FILETYPE_PEM, csr))
+            log.warn("Certificates already exist")
 
 
 def check_status():
-    #Check certs status
 
+    if config.getint('manager', 'IsMaster') == 1:
+        #Check CA certs
+        capub = "%s/%s" % (config.get('global', 'CAPath'),
+                           config.get('global', 'CACert'))
+        cakey = "%s/%s" % (config.get('global', 'CAPrivatePath'),
+                           config.get('global', 'CAKey'))
+
+        try:
+            capubfile = open(capub)
+        except IOError:
+            log.error("Public CA file missing: %s", capub)
+
+        try:
+            cakeyfile = open(cakey)
+        except IOError:
+            log.error("Private CA file missing: %s", cakey)
+
+        cacertinf = crypto.load_certificate(
+            crypto.FILETYPE_PEM, capubfile.read())
+
+    #Get cert time without timezone chars
+    notafter = cacertinf.get_notAfter()[0:14]
+    #If notafter is less than a week away...
+    if (time.mktime(time.strptime(notafter, '%Y%m%d%H%M%S'))
+        - time.time()) < 604800:
+        log.warn("CA Certificate %s expires in less than 7 days!", capubfile)
+
+    log.info("Check Complete")
+
+
+    #Check certs status
     try:
         CN = config.get('cert', 'CN')
     except:
@@ -185,11 +226,13 @@ def check_status():
         pubfile = open(pub)
     except IOError:
         log.error("Public certificate file missing: %s", pub)
+        sys.exit(2)
 
     try:
         keyfile = open(key)
     except IOError:
         log.error("Private key file missing: %s", key)
+        sys.exit(2)
 
     certinf = crypto.load_certificate(
         crypto.FILETYPE_PEM, pubfile.read())
@@ -202,10 +245,57 @@ def check_status():
         log.warn("Certificate %s expires in less than 7 days!", pubfile)
 
 
+def csr_list():
+
+    csrpath = config.get('global', 'CSRCache')
+    csrfiles = os.listdir(csrpath)
+
+    for file in csrfiles:
+        log.info("Processing file %s:", file)
+        with open(csrpath + "/" + file) as f:
+            csr = crypto.load_certificate_request(
+                crypto.FILETYPE_PEM, f.read())
+
+        if (config.get('manager', 'HostVerify') == "warn") and (
+            csr.get_subject().CN != file[:-4]):
+            log.warn("Hostname doesn't match CN name")
+
+        dosign = raw_input(
+            "Sign CSR %s (CN=%s) [N/y/d]? " % (
+                file, csr.get_subject().CN)).strip()
+
+        if dosign.lower() == "y":
+            log.info("Signing Certificate")
+
+            cakey = "%s/%s" % (config.get('global', 'CAPrivatePath'),
+                               config.get('global', 'CAKey'))
+            capub = "%s/%s" % (config.get('global', 'CAPath'),
+                               config.get('global', 'CACert'))
+            certfile = "%s/%s.crt" % (config.get('global', 'CertPath'),
+                                      csr.get_subject().CN)
+
+            certobj = cert.sign_csr(cakey, capub, csr,
+                                    config.getint('cert', 'CertLifetime'))
+
+            with open(certfile, 'w') as f:
+                log.info("Writing Certificate: %s", certfile)
+                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+                                                certobj))
+            log.info("Deleting CSR file: %s", file)
+            os.remove(csrpath + "/" + file)
+
+        elif dosign.lower() == "d":
+            log.info("Deleting CSR file: %s", file)
+            os.remove(csrpath + "/" + file)
+        else:
+            log.info("Skipping CSR file: %s", file)
+
+
 def send_csr():
     #Send csr to host
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+    sendfile = ''
     if options.file:
         sendfile = options.file
     else:
@@ -213,8 +303,10 @@ def send_csr():
             CN = config.get('cert', 'CN')
         except ConfigParser.NoOptionError:
             CN = socket.getfqdn()
-            sendfile = "%s/%s.csr" % (config.get('global', 'CSRCache'), CN)
 
+        sendfile = "%s/%s.csr" % (config.get('global', 'CertPath'), CN)
+
+    log.info("Sending CSR %s for signing", sendfile)
     with open(sendfile) as f:
         s.sendto(f.read(), (config.get('global', 'ManagerAddress'),
                             config.getint('global', 'ManagerPort')))
@@ -222,7 +314,7 @@ def send_csr():
 
 def Daemon():
 
-    if not path.exists(config.get('global', 'CAPath') + "/" +
+    if not os.path.exists(config.get('global', 'CAPath') + "/" +
                        config.get('global', 'CACert')):
         log.error("Ca Certificate Missing.  Create this, or call --makecerts.")
         sys.exit(2)
@@ -250,6 +342,12 @@ if __name__ == "__main__":
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
                       help="Start Certificate Manager Daemon.")
+    parser.add_option("-c", "--check",
+                      action="store_true", dest="check",
+                      help="Check status of own CA and Client Certificates.")
+    parser.add_option("-x", "--sign",
+                      action="store_true", dest="sign",
+                      help="View and sign queued CSRs.")
     parser.add_option("-s", "--send",
                       action="store_true", dest="send",
                       help="Send a CSR file to the Certificate Manager.")
@@ -273,5 +371,8 @@ if __name__ == "__main__":
     if options.send:
         send_csr()
 
-    #If no options passed, simply check certs and expiry and report
-    check_status()
+    if options.sign:
+        csr_list()
+
+    if options.check:
+        check_status()
