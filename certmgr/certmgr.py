@@ -207,7 +207,6 @@ def check_status():
 
     try:
         pubfile = open(cert_file(CN))
-        pubfile.close()
     except IOError:
         log.error("Public certificate file missing: %s", cert_file(CN))
         sys.exit(2)
@@ -309,7 +308,22 @@ def Daemon():
         thread.start()
 
 
+def check_paths():
+
+    for path in ['CertPath', 'PrivatePath', 'CAPath',
+                 'CAPrivatePath', 'CSRCache']:
+
+        if not os.path.exists(config.get('global', path)):
+            try:
+                os.mkdir(config.get('global', path), 0600)
+            except OSError:
+                log.error("Unable to create path: %s",
+                          config.get('global', path))
+
+
 if __name__ == "__main__":
+
+    check_paths()
 
     parser = OptionParser()
     parser.add_option("-m", "--makecerts",
