@@ -282,8 +282,10 @@ def send_csr():
         except ConfigParser.NoOptionError:
             CN = socket.getfqdn()
 
-    log.info("Sending CSR %s for signing", csr_file(CN))
-    with open(csr_file(CN)) as f:
+        sendfile = csr_file(CN)
+
+    log.info("Sending CSR %s for signing", sendfile)
+    with open(sendfile) as f:
         s.sendto(f.read(), (config.get('global', 'ManagerAddress'),
                             config.getint('global', 'ManagerPort')))
 
