@@ -112,17 +112,11 @@ def csr_cache_file(name):
     return "%s/%s.csr" % (config.get('global', 'CSRCache'), name)
 
 
-def check_certs(pub, key):
-
-    if not os.path.exists(key):
-        return "err"
-
-
 def make_certs():
         if config.getint('manager', 'IsMaster') == 1:
             #Generate a CA if no certs exist
 
-            if check_certs(ca_cert_file(), ca_key_file()) == "err":
+            if not os.path.exists(ca_key_file()):
                 log.info("Generating CA Certificates for Master")
                 try:
                     CN = config.get('ca', 'CN')
@@ -154,7 +148,7 @@ def make_certs():
         except ConfigParser.NoOptionError:
             CN = socket.getfqdn()
 
-        if check_certs(cert_file(CN), key_file(CN)) == "err":
+        if not os.path.exists(key_file(CN)):
             log.info("Making Key and CSR for %s", CN)
 
             key = cert.make_key(config.getint('cert', 'Bits'))
