@@ -34,10 +34,10 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_clean -k
+	mkdir -p $(CURDIR)/debian/certmgr
 	dh_installdirs
 
 	# Add here commands to install the package into debian/certmgr.
-	mkdir -p $(CURDIR)/debian/certmgr
 
 	cp cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared/certmgr/cert.py
 	cp certmgr.py $(CURDIR)/debian/certmgr/usr/bin/certmgr
