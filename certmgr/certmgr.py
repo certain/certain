@@ -273,7 +273,6 @@ def send_csr():
     #Send csr to host
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sendfile = ''
     if options.file:
         sendfile = options.file
     else:
