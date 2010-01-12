@@ -1,13 +1,12 @@
 #!/usr/bin/python
 
-#import sys
 from OpenSSL import crypto
 
 
 def make_key(bits=2048):
     """Create RSA key
 
-    bits: Default bits for RSA key (defaults to 2048)
+    bits: Bits for RSA key (defaults to 2048)
 
     Returns the Pkey object
 
@@ -22,13 +21,10 @@ def make_key(bits=2048):
 def make_csr(key, CN,
              OU="CertMgr Dept", O="CertMgr Org",
              L="CertMgr City", ST="CertMgr State", C="UK"):
-
     """Make a certificate request from an RSA key
 
     key: String containing key
-    CN: Common Name
     CN: Common Name (aka CA hostname)
-    cacsrfile: File to write Certificate Request to
     OU: Organisational Unit (CertMgr Dept)
     O: Organisation (CertMgr Org)
     L: Location (CertMgr City)
@@ -36,6 +32,7 @@ def make_csr(key, CN,
     C: Country (UK)
 
     Returns an X509 object
+
     """
 
     csr = crypto.X509Req()
@@ -53,20 +50,17 @@ def make_csr(key, CN,
     return csr
 
 
-def sign_csr(cakeyfile, cacertfile, csr, lifetime=60 * 60 * 24 * 365):
-
+def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     """Sign certificate request.
 
-    cakeyfile: CA key file
-    cacertfile: CA Public Certificate file
+    cakey: CA key object
+    cacert: CA Public Certificate object
     csr: Certificate Request string
     lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
 
     Returns X509 object
-    """
 
-    cakey = key_from_file(cakeyfile)
-    cacert = cert_from_file(cacertfile)
+    """
 
     cert = crypto.X509()
     cert.set_pubkey(csr.get_pubkey())
@@ -83,7 +77,6 @@ def sign_csr(cakeyfile, cacertfile, csr, lifetime=60 * 60 * 24 * 365):
 
 def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
-
     """Generate a certificate authority
 
     CN: Common Name
@@ -109,69 +102,18 @@ def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
     cacert.gmtime_adj_notAfter(lifetime)
     cacert.sign(key, 'md5')
 
-    return (key, cacert)
+    return key, cacert
 
 
-def get_cert_info(cert):
-
-    """Return certificate information
-
-    cert: String containing certificate
-
-    Returns:
-    (X509Name object for issuer,
-    X509Name object for certificate,
-    notBefore date,
-    notAfter date,
-    serial_number)
-
-
-    """
-
-    ca = cert.get_issuer()
-    certinf = cert.get_subject()
-
-    return (ca, certinf,
-            cert.get_notBefore(),
-            cert.get_notAfter(),
-            cert.get_serial_number())
-
-
-def get_csr_info(csr):
-
-    """Return certificate information
-
-    csr: String containing certificate
-
-    Returns:
-    (X509Name object for issuer,
-    X509Name object for certificate,
-    notBefore date,
-    notAfter date,
-    serial_number)
-
-
-    """
-
-    return (csr.get_subject())
-
-
-def key_from_file(keyfile):
+def key_from_file(keyfilename):
     """Read a private key from file"""
 
-    with open(keyfile, 'r') as f:
+    with open(keyfilename) as f:
         return crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
 
 
-def csr_from_file(csrfile):
-    """ Read a CSR from file"""
-
-    with open(csrfile, 'r') as f:
-        return crypto.load_certificate_request(crypto.FILETYPE_PEM, f.read())
-
-
-def cert_from_file(certfile):
+def cert_from_file(certfilename):
     """Read a certificate from file"""
 
-    with open(certfile, 'r') as f:
+    with open(certfilename) as f:
         return crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
