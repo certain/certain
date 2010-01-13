@@ -75,7 +75,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     return cert
 
 
-def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
+def make_ca(key, CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
     """Generate a certificate authority
 
@@ -89,7 +89,6 @@ def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
 
     """
 
-    key = make_key(4096)
     csr = make_csr(key, CN)
 
     cacert = crypto.X509()
@@ -102,7 +101,7 @@ def make_ca(CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
     cacert.gmtime_adj_notAfter(lifetime)
     cacert.sign(key, 'md5')
 
-    return key, cacert
+    return cacert
 
 
 def key_from_file(keyfilename):
