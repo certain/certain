@@ -12,6 +12,8 @@ import cert
 from optparse import OptionParser
 import os
 from OpenSSL import crypto
+import httplib
+from urlparse import urlparse
 import logging
 from contextlib import closing, nested
 import errno
@@ -46,8 +48,22 @@ class StoreHandler(object):
     def webdav(certobj):
         """Puts certificate on a webdav server"""
 
-        storeurl = config.get("manager", "StoreUrl")
-        print "I am going to webdav store to %s" % storeurl
+        url = urlparse(config.get('manager', 'StoreUrl'))
+        certfile = "%s/%s" % (url.path, certobj.get_subject().CN)
+
+        log.debug("Writing cert: %s to server: %s", certfile, url)
+
+        if url.scheme == "https":
+            web = httplib.HTTPSConnection(url.netloc)
+        else:
+            web = httplib.HTTPConnection(url.netloc)
+
+        web.request('PUT', certfile,
+                    (crypto.dump_certificate(crypto.FILETYPE_PEM, certobj)))
+        resp = web.getresponse()
+        if not 200 <= resp.status < 300:
+            log.error("Error writing to webdav server: %s", resp.status)
+            return
 
 
 class MsgHandlerThread(threading.Thread):
