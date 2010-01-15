@@ -25,6 +25,7 @@ install: build
 	mkdir -p $(CURDIR)/debian/certmgr
 	mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
 	mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared/certmgr
+	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
 	dh_installdirs
 
 	# Add here commands to install the package into debian/certmgr
