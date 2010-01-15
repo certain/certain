@@ -49,7 +49,7 @@ class StoreHandler(object):
         """Puts certificate on a webdav server"""
 
         url = urlparse(config.get('manager', 'StoreUrl'))
-        certfile = "%s/%s" % (url.path, certobj.get_subject().CN)
+        certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
 
         log.debug("Writing cert: %s to server: %s", certfile, url)
 
@@ -370,7 +370,8 @@ def Daemon():
     #Listen for incoming messages
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setblocking(0)
-    s.bind(('', config.getint('global', 'ManagerPort')))
+    s.bind((config.get('global', 'ManagerAddress'),
+            config.getint('global', 'ManagerPort')))
 
     while True:
         read, write, error = select.select([s], [], [])
