@@ -1,5 +1,5 @@
-certmgr (0.0.1-1) unstable; urgency=low
+certmgr (0.0.1) unstable; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Initial release
 
  -- Matthew Richardson <m.richardson@ed.ac.uk>  Thu, 17 Dec 2009 15:23:03 +0000
