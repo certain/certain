@@ -1,8 +1,0 @@
-usr/bin
-usr/share/pyshared/certmgr
-etc/certmgr
-etc/certmgr/CA
-etc/certmgr/CA/private
-etc/certmgr/certs
-etc/certmgr/certs/private
-etc/certmgr/CSRCache
