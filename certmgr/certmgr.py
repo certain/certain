@@ -333,7 +333,7 @@ def csr_sign():
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
 
-            store = config.get("manager", "StoreType")
+            store = config.get('manager', 'StoreType')
             if store.lower() != "none":
                 log.info("Storing Signed Cert")
                 getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
