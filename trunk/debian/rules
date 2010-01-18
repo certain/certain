@@ -29,7 +29,7 @@ install: build
 	dh_installdirs
 
 	#Add the certmgr user and group
-	groupadd certmgr
+	groupadd --system --force certmgr
 	useradd --system --home /etc/certmgr -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
 	chown certmgr:certmgr /debian/certmgr/etc/certmgr
 
