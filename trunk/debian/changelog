@@ -1,3 +1,9 @@
+certmgr (0.0.2) unstable; urgency=low
+
+  * .deb packaging properly worked out.
+
+ -- Matthew Richardson <m.richardson@ed.ac.uk>  Tue, 18 Jan 2010 16:15:12 +0000 
+
 certmgr (0.0.1) unstable; urgency=low
 
   * Initial release
