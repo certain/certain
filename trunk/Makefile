@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-prefix=/
+prefix=src
 
 install:
 	mkdir -p $(prefix)/usr/share/pyshared
