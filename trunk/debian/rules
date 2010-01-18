@@ -11,16 +11,16 @@ install:
 	dh_testroot
 	dh_clean -k
 	mkdir -p $(CURDIR)/debian/certmgr
-	mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
-	mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared
-	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
+	#mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
+	#mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared
+	#mkdir -p $(CURDIR)/debian/certmgr/usr/bin
 	dh_installdirs
 
 	# Add here commands to install the package into debian/certmgr
 
-	cp $(CURDIR)/cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared
-	cp $(CURDIR)/certmgr.py $(CURDIR)/debian/certmgr/usr/bin/certmgr
-	cp $(CURDIR)/certmgr.cfg $(CURDIR)/debian/certmgr/etc/certmgr
+	cp $(CURDIR)/cert.py $(CURDIR)/debian/tmp/usr/share/pyshared
+	cp $(CURDIR)/certmgr.py $(CURDIR)/debian/tmp/usr/bin/certmgr
+	cp $(CURDIR)/certmgr.cfg $(CURDIR)/debian/tmp/etc/certmgr
 	
 
 # Build architecture-independent files here.
