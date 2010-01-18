@@ -28,11 +28,6 @@ install: build
 	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
 	dh_installdirs
 
-	#Add the certmgr user and group
-	groupadd --system --force certmgr
-	useradd --system --home /etc/certmgr -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
-	chown certmgr:certmgr /debian/certmgr/etc/certmgr
-
 	# Add here commands to install the package into debian/certmgr
 
 	cp cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared
