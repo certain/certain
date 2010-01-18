@@ -28,12 +28,17 @@ install: build
 	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
 	dh_installdirs
 
+	#Add the certmgr user and group
+	groupadd certmgr
+	useradd --system --home /etc/certmgr -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
+	chown certmgr:certmgr /debian/certmgr/etc/certmgr
+
 	# Add here commands to install the package into debian/certmgr
 
 	cp cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared
 	cp certmgr.py $(CURDIR)/debian/certmgr/usr/bin/certmgr
 	cp certmgr.cfg $(CURDIR)/debian/certmgr/etc/certmgr
-
+	
 
 # Build architecture-independent files here.
 binary-indep: install
