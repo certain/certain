@@ -1,0 +1,13 @@
+Source: certmgr
+Section: misc
+Priority: extra
+Maintainer: Matthew Richardson <m.richardson@ed.ac.uk>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.3
+
+Package: certmgr
+Architecture: all
+Depends: python (>=2.6)
+Description: Certificate Manager Service
+ Network service which accepts certificate requests, signs them, and stores the
+ signed certificates in a certificate store for public access.
