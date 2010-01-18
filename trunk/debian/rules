@@ -23,10 +23,9 @@ install: build
 	dh_testroot
 	dh_clean -k
 	mkdir -p $(CURDIR)/debian/certmgr
-	#mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
-	#mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared
-	#mkdir -p $(CURDIR)/debian/certmgr/usr/bin
-	dh_installdirs
+	mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
+	mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared
+	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
 
 	# Add here commands to install the package into debian/certmgr
 
