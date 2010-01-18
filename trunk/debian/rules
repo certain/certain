@@ -1,24 +1,12 @@
 #!/usr/bin/make -f
 
-configure: configure-stamp
-configure-stamp:
-	dh_testdir
-	touch configure-stamp
-
-build: build-stamp
-
-build-stamp: configure-stamp  
-	dh_testdir
-
-	touch build-stamp
-
 clean: 
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp configure-stamp
 	dh_clean 
 
-install: build
+install:
 	dh_testdir
 	dh_testroot
 	dh_clean -k
@@ -26,12 +14,13 @@ install: build
 	mkdir -p $(CURDIR)/debian/certmgr/etc/certmgr
 	mkdir -p $(CURDIR)/debian/certmgr/usr/share/pyshared
 	mkdir -p $(CURDIR)/debian/certmgr/usr/bin
+	dh_installdirs
 
 	# Add here commands to install the package into debian/certmgr
 
-	cp cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared
-	cp certmgr.py $(CURDIR)/debian/certmgr/usr/bin/certmgr
-	cp certmgr.cfg $(CURDIR)/debian/certmgr/etc/certmgr
+	cp $(CURDIR)/cert.py $(CURDIR)/debian/certmgr/usr/share/pyshared
+	cp $(CURDIR)/certmgr.py $(CURDIR)/debian/certmgr/usr/bin/certmgr
+	cp $(CURDIR)/certmgr.cfg $(CURDIR)/debian/certmgr/etc/certmgr
 	
 
 # Build architecture-independent files here.
