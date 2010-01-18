@@ -24,11 +24,11 @@ install:
 	
 
 # Build architecture-independent files here.
-binary-indep: install
+binary-arch: install
 # We have nothing to do by default.
 
 # Build architecture-dependent files here.
-binary-arch: install
+binary-indep: install
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs 
