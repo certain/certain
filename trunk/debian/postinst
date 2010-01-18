@@ -2,5 +2,5 @@
 #Add the certmgr user and group
 groupadd --system --force certmgr
 useradd --system --home /etc/certmgr -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
-chown certmgr:certmgr /debian/certmgr/etc/certmgr
+chown certmgr:certmgr /etc/certmgr
 
