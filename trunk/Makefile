@@ -4,13 +4,16 @@ prefix=src
 
 install:
 	groupadd --system --force certmgr
-	useradd --system -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
+	getent passwd certmgr || useradd --system -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
 
 	install -d $(prefix)/usr/share/pyshared
 	install -d $(prefix)/usr/bin
 	install -d $(prefix)/etc/certmgr
-	install -d -o certmgr -g certmgr -m 0700 $(prefix)/etc/certmgr/CA $(prefix)/etc/certmgr/CA/private $(prefix)/etc/certmgr/private
-	install -d -o certmgr -g certmgr $(prefix)/etc/certmgr/CSRCache $(prefix)/etc/certmgr/certs
+	install -d -o certmgr -g certmgr -m 0700 $(prefix)/etc/certmgr/CA
+	install -d -o certmgr -g certmgr -m 0700 $(prefix)/etc/certmgr/CA/private
+	install -d -o certmgr -g certmgr -m 0700 $(prefix)/etc/certmgr/private
+	install -d -o certmgr -g certmgr $(prefix)/etc/certmgr/CSRCache
+	install -d -o certmgr -o certmgr $(prefix)/etc/certmgr/certs
 
 	install cert.py $(prefix)/usr/share/pyshared
 	install certmgr.py $(prefix)/usr/bin/certmgr
