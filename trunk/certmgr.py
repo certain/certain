@@ -19,7 +19,7 @@ from contextlib import closing, nested
 import errno
 import tempfile
 
-configfile = "certmgr.cfg"
+configfile = "/etc/certmgr/certmgr.cfg"
 
 config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
 if not config.read(configfile):
