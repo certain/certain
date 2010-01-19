@@ -35,7 +35,7 @@ binary-indep: install
 #	dh_installemacsen
 #	dh_installpam
 #	dh_installmime
-#	dh_python
+	dh_pycentral
 #	dh_installinit
 #	dh_installcron
 #	dh_installinfo
