@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+groupadd --system --force certmgr >/dev/null 2>&1
+getent passwd certmgr >/dev/null 2>&1 || useradd --system -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
+
+
+for f in /etc/certmgr/CA /etc/certmgr/CA/private /etc/certmgr/private; do
+    if ! dpkg-statoverride --list $f > /dev/null; then
+       dpkg-statoverride --update --add certmgr certmgr 0700 $f
+    fi
+done
+
+for f in /etc/certmgr/CSRCache /etc/certmgr/certs; do
+    if ! dpkg-statoverride --list $f > /dev/null; then
+       dpkg-statoverride --update --add certmgr certmgr 0755 $f
+    fi
+done

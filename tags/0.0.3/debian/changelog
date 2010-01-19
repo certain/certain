@@ -1,0 +1,19 @@
+certmgr (0.0.3) unstable; urgency=low
+
+  * Much fiddling to get ownership and modes correct.
+    - discovered dpkg-statoverride
+    - fixed path to /etc/certmgr/certmgr.cfg in main code
+
+ -- Matthew Richardson <m.richardson@ed.ac.uk>  Tue, 19 Jan 2010 17:26:42 +0000 
+
+certmgr (0.0.2) unstable; urgency=low
+
+  * .deb packaging properly worked out.
+
+ -- Matthew Richardson <m.richardson@ed.ac.uk>  Tue, 18 Jan 2010 16:15:12 +0000 
+
+certmgr (0.0.1) unstable; urgency=low
+
+  * Initial release
+
+ -- Matthew Richardson <m.richardson@ed.ac.uk>  Thu, 17 Dec 2009 15:23:03 +0000
