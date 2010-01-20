@@ -14,6 +14,6 @@ install:
 
 	install cert.py $(prefix)/usr/share/pyshared
 	install certmgr.py $(prefix)/usr/bin/certmgr
-	install certmgr.cfg $(prefix)/etc/certmgr
+	install certmgr.cfg.example $(prefix)/etc/certmgr
 
 
