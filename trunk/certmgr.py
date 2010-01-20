@@ -367,8 +367,8 @@ def send_csr(file=None):
     with nested(
             open(sendfile),
             closing(socket.socket(type=socket.SOCK_DGRAM))) as (f, s):
-        s.sendto(f.read(), (config.get('global', 'ManagerAddress'),
-                            config.getint('global', 'ManagerPort')))
+        s.sendto(f.read(), (config.get('global', 'MasterAddress'),
+                            config.getint('global', 'MasterPort')))
 
 
 def Daemon():
@@ -384,8 +384,8 @@ def Daemon():
     #Listen for incoming messages
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setblocking(0)
-    s.bind((config.get('global', 'ManagerAddress'),
-            config.getint('global', 'ManagerPort')))
+    s.bind((config.get('global', 'MasterAddress'),
+            config.getint('global', 'MasterPort')))
 
     while True:
         read, write, error = select.select([s], [], [])
@@ -437,7 +437,7 @@ def main():
                       help="Setup certificates on your system.")
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
-                      help="Start Certificate Manager Daemon.")
+                      help="Start CertMgr Daemon.")
     parser.add_option("-c", "--check",
                       action="store_true", dest="check",
                       help="Check status of own CA and Client Certificates.")
@@ -446,7 +446,7 @@ def main():
                       help="View and sign queued CSRs.")
     parser.add_option("-s", "--send",
                       action="store_true", dest="send",
-                      help="Send a CSR file to the Certificate Manager.")
+                      help="Send a CSR file to the CertMgr Master.")
     parser.add_option("-f", "--file",
                       dest="file",
                       help="Specifies the CSR file to be sent with --send.  \
