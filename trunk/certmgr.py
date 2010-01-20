@@ -104,8 +104,8 @@ class MsgHandlerThread(threading.Thread):
                     f.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                             certobj))
 
-                store_cert(certobj)
-                return
+                log.info("Storing Signed Cert")
+                getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
 
         #Just save the CSR for later signing
         with open(csr_cache_file(self.src), 'w') as f:
