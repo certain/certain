@@ -99,18 +99,25 @@ class MsgHandlerThread(threading.Thread):
                 log.error("Signing failed. Will save for later signing.")
                 log.error(str(e))
             else:
-                with open(cert_file(CN), 'w') as f:
-                    log.info("Writing certificate: %s", f.name)
-                    f.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+                with tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(cert_file(CN)), delete=False) as f_crt:
+                    log.info("Writing certificate: %s", cert_file(CN))
+                    f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                             certobj))
+
+                os.rename(f_crt.name, cert_file(CN))
 
                 log.info("Storing Signed Cert")
                 getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
 
         #Just save the CSR for later signing
-        with open(csr_cache_file(self.src), 'w') as f:
-            log.info("Writing CSR to cache: %s", f.name)
-            f.write(self.msg)
+        with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(csr_cache_file(self.src)),
+            delete=False) as f_csr:
+            log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
+            f_csr.write(self.msg)
+
+        os.rename(f_csr.name, csr_cache_file(self.src))
 
 
 class HostVerifyError(Exception):
@@ -326,10 +333,16 @@ def csr_sign():
             certobj = cert.sign_csr(cakey, cacert, csr,
                                     config.getint('cert', 'CertLifetime'))
 
-            with open(cert_file(csr.get_subject().CN), 'w') as f:
-                log.info("Writing certificate: %s", f.name)
-                f.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(cert_file(csr.get_subject().CN)),
+                delete=False) as f_crt:
+                log.info("Writing certificate: %s",
+                         certfile(csr.get_subject().CN))
+                f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                                                 certobj))
+
+            os.rename(f_crt.name, cert_file(csr.get_subject().CN))
+
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
 
@@ -337,6 +350,7 @@ def csr_sign():
             if store.lower() != "none":
                 log.info("Storing Signed Cert")
                 getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
+
         elif dosign == "d":
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
