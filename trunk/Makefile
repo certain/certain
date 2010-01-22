@@ -12,8 +12,9 @@ install:
 	install -d $(prefix)/etc/certmgr/CSRCache
 	install -d $(prefix)/etc/certmgr/certs
 
-	install cert.py $(prefix)/usr/share/pyshared
-	install certmgr.py $(prefix)/usr/bin/certmgr
-	install certmgr.cfg.example $(prefix)/etc/certmgr
+	install certmgr.py $(prefix)/usr/share/pyshared/
+	install cert.py $(prefix)/usr/share/pyshared/
+	install certmgr $(prefix)/usr/bin/
+	install certmgr.cfg.example $(prefix)/etc/certmgr/
 
 
