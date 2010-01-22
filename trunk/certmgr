@@ -1,0 +1,59 @@
+#!/usr/bin/python
+
+"""Certificate Management System"""
+
+import certmgr
+from optparse import OptionParser
+
+certmgr.config = certmgr.configparse('/etc/certmgr/certmgr.cfg')
+certmgr.setloglevel()
+
+def main():
+    certmgr.check_paths()
+
+    parser = OptionParser()
+    parser.add_option("-m", "--makecerts",
+                      action="store_true", dest="makecerts",
+                      help="Setup certificates on your system.")
+    parser.add_option("-d", "--daemon",
+                      action="store_true", dest="daemon",
+                      help="Start CertMgr Daemon.")
+    parser.add_option("-c", "--check",
+                      action="store_true", dest="check",
+                      help="Check status of own CA and Client Certificates.")
+    parser.add_option("-x", "--sign",
+                      action="store_true", dest="sign",
+                      help="View and sign queued CSRs.")
+    parser.add_option("-s", "--send",
+                      action="store_true", dest="send",
+                      help="Send a CSR file to the CertMgr Master.")
+    parser.add_option("-f", "--file",
+                      dest="file",
+                      help="Specifies the CSR file to be sent with --send.  \
+                      If unset, defaults to client CSR.")
+
+    parser.set_defaults(makecerts=False, daemon=False, send=False)
+    (options, args) = parser.parse_args()
+
+    if options.makecerts:
+        certmgr.make_certs()
+
+    if options.daemon:
+        if certmgr.config.getboolean('manager', 'IsMaster'):
+            certmgr.Daemon()
+        else:
+            log.error("IsMaster not set in configuration file!")
+            sys.exit(2)
+
+    if options.send:
+        certmgr.send_csr(options.file)
+
+    if options.sign:
+        certmgr.csr_sign()
+
+    if options.check:
+        certmgr.check_status()
+
+
+if __name__ == "__main__":
+    main()

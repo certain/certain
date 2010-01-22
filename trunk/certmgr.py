@@ -9,7 +9,6 @@ import select
 import ConfigParser
 import threading
 import cert
-from optparse import OptionParser
 import os
 from OpenSSL import crypto
 import httplib
@@ -19,21 +18,26 @@ from contextlib import closing, nested
 import errno
 import tempfile
 
-configfile = "/etc/certmgr/certmgr.cfg"
+config = None
 
-config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
-if not config.read(configfile):
-    raise ConfigParser.Error(
-        "Unable to read Configuration File: %s" % (configfile, ))
+def configparse(configfile):
+    config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
+    if not config.read(configfile):
+        raise ConfigParser.Error(
+            "Unable to read Configuration File: %s" % (configfile, ))
+    return config
 
 log = logging.getLogger('certmgr')
-log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+log.setLevel(logging.CRITICAL)
 logformat = logging.Formatter('%(levelname)s %(message)s')
 logconsole = logging.StreamHandler()
 logconsole.setFormatter(logformat)
-logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+logconsole.setLevel(logging.CRITICAL)
 log.addHandler(logconsole)
 
+def setloglevel():
+    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
 class StoreHandler(object):
     """Class to handle different store types"""
@@ -337,7 +341,7 @@ def csr_sign():
                 dir=os.path.dirname(cert_file(csr.get_subject().CN)),
                 delete=False) as f_crt:
                 log.info("Writing certificate: %s",
-                         certfile(csr.get_subject().CN))
+                         cert_file(csr.get_subject().CN))
                 f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                                                 certobj))
 
@@ -426,54 +430,3 @@ def check_paths():
             log.error("Unable to create path: %s: %s",
                 config.get('global', path),
                 e)
-
-
-def main():
-    check_paths()
-
-    parser = OptionParser()
-    parser.add_option("-m", "--makecerts",
-                      action="store_true", dest="makecerts",
-                      help="Setup certificates on your system.")
-    parser.add_option("-d", "--daemon",
-                      action="store_true", dest="daemon",
-                      help="Start CertMgr Daemon.")
-    parser.add_option("-c", "--check",
-                      action="store_true", dest="check",
-                      help="Check status of own CA and Client Certificates.")
-    parser.add_option("-x", "--sign",
-                      action="store_true", dest="sign",
-                      help="View and sign queued CSRs.")
-    parser.add_option("-s", "--send",
-                      action="store_true", dest="send",
-                      help="Send a CSR file to the CertMgr Master.")
-    parser.add_option("-f", "--file",
-                      dest="file",
-                      help="Specifies the CSR file to be sent with --send.  \
-                      If unset, defaults to client CSR.")
-
-    parser.set_defaults(makecerts=False, daemon=False, send=False)
-    (options, args) = parser.parse_args()
-
-    if options.makecerts:
-        make_certs()
-
-    if options.daemon:
-        if config.getboolean('manager', 'IsMaster'):
-            Daemon()
-        else:
-            log.error("IsMaster not set in configuration file!")
-            sys.exit(2)
-
-    if options.send:
-        send_csr(options.file)
-
-    if options.sign:
-        csr_sign()
-
-    if options.check:
-        check_status()
-
-
-if __name__ == "__main__":
-    main()
