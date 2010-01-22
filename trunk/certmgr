@@ -6,7 +6,7 @@ import certmgr
 from optparse import OptionParser
 
 certmgr.config = certmgr.configparse('/etc/certmgr/certmgr.cfg')
-certmgr.setloglevel()
+
 
 def main():
     certmgr.check_paths()

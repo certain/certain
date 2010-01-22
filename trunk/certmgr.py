@@ -18,14 +18,6 @@ from contextlib import closing, nested
 import errno
 import tempfile
 
-config = None
-
-def configparse(configfile):
-    config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
-    if not config.read(configfile):
-        raise ConfigParser.Error(
-            "Unable to read Configuration File: %s" % (configfile, ))
-    return config
 
 log = logging.getLogger('certmgr')
 log.setLevel(logging.CRITICAL)
@@ -35,9 +27,18 @@ logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
 log.addHandler(logconsole)
 
-def setloglevel():
+config = None
+
+
+def configparse(configfile):
+    config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
+    if not config.read(configfile):
+        raise ConfigParser.Error(
+            "Unable to read Configuration File: %s" % (configfile, ))
     log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
     logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    return config
+
 
 class StoreHandler(object):
     """Class to handle different store types"""
