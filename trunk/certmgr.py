@@ -27,10 +27,15 @@ logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
 log.addHandler(logconsole)
 
-config = None
+configfile = "/etc/certmgr/certmgr.cfg"
+
+def __init__():
+    global config
+    config = configparse(configfile)
 
 
 def configparse(configfile):
+    global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
     if not config.read(configfile):
         raise ConfigParser.Error(
@@ -53,6 +58,7 @@ class StoreHandler(object):
     def webdav(certobj):
         """Puts certificate on a webdav server"""
 
+        global config
         url = urlparse(config.get('manager', 'StoreUrl'))
         certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
 
@@ -82,6 +88,7 @@ class MsgHandlerThread(threading.Thread):
 
     def run(self):
 
+        global config
         csr = crypto.load_certificate_request(
             crypto.FILETYPE_PEM, self.msg)
         CN = csr.get_subject().CN
@@ -140,28 +147,34 @@ class CACertError(Exception):
 
 
 def ca_cert_file():
+    global config
     return "%s/%s" % (config.get('global', 'CAPath'),
                       config.get('global', 'CACert'))
 
 
 def ca_key_file():
+    global config
     return "%s/%s" % (config.get('global', 'CAPrivatePath'),
                       config.get('global', 'CAKey'))
 
 
 def cert_file(name):
+    global config
     return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
 
 
 def key_file(name):
+    global config
     return "%s/%s.key" % (config.get('global', 'PrivatePath'), name)
 
 
 def csr_file(name):
+    global config
     return "%s/%s.csr" % (config.get('global', 'CertPath'), name)
 
 
 def csr_cache_file(name):
+    global config
     return "%s/%s.csr" % (config.get('global', 'CSRCache'), name)
 
 
@@ -178,6 +191,7 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
 
 def make_certs():
+    global config
     if config.getboolean('manager', 'IsMaster'):
         #Generate a CA if no certs exist
 
@@ -241,7 +255,7 @@ def make_certs():
 
 
 def check_status():
-
+    global config
     if config.getboolean('manager', 'IsMaster'):
         #Check CA certs
         try:
@@ -301,7 +315,7 @@ def check_status():
 
 
 def csr_sign():
-
+    global config
     if not config.getboolean('manager', 'IsMaster'):
         log.error("Not running as a Certificate Master")
         sys.exit(2)
@@ -366,6 +380,8 @@ def csr_sign():
 def send_csr(file=None):
     "Send csr to host"
 
+
+    global config
     sendfile = file or csr_file(config.get('cert', 'CN'))
 
     log.info("Sending CSR %s for signing", sendfile)
@@ -378,6 +394,7 @@ def send_csr(file=None):
 
 def Daemon():
 
+    global config
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('manager', 'AutoSign'):
         try:
@@ -415,6 +432,7 @@ def check_cacerts():
 
 def check_paths():
 
+    global config
     log.debug("Checking (and creating) paths")
 
     for path, mode in [('RootPath', 0777),
