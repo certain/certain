@@ -5,7 +5,7 @@
 import certmgr
 from optparse import OptionParser
 
-certmgr.configparse('/etc/certmgr/certmgr.cfg')
+certmgr.parse_config('/etc/certmgr/certmgr.cfg')
 
 
 def main():
