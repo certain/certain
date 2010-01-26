@@ -19,32 +19,6 @@ import errno
 import tempfile
 
 
-log = logging.getLogger('certmgr')
-log.setLevel(logging.CRITICAL)
-logformat = logging.Formatter('%(levelname)s %(message)s')
-logconsole = logging.StreamHandler()
-logconsole.setFormatter(logformat)
-logconsole.setLevel(logging.CRITICAL)
-log.addHandler(logconsole)
-
-configfile = "/etc/certmgr/certmgr.cfg"
-
-def __init__():
-    global config
-    config = configparse(configfile)
-
-
-def configparse(configfile):
-    global config
-    config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
-    if not config.read(configfile):
-        raise ConfigParser.Error(
-            "Unable to read Configuration File: %s" % (configfile, ))
-    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
-    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
-    return config
-
-
 class StoreHandler(object):
     """Class to handle different store types"""
 
@@ -188,6 +162,16 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
     """
     return os.fdopen(os.open(filename, flag, mode), 'w')
+
+
+def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
+    global config
+    config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
+    if not config.read(configfile):
+        raise ConfigParser.Error(
+            "Unable to read Configuration File: %s" % (configfile, ))
+    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
 
 def make_certs():
@@ -392,7 +376,7 @@ def send_csr(file=None):
                             config.getint('global', 'MasterPort')))
 
 
-def Daemon():
+def launch_daemon():
 
     global config
     cakey = cacert = None # Won't be used if auto-signing is turned off.
@@ -449,3 +433,14 @@ def check_paths():
             log.error("Unable to create path: %s: %s",
                 config.get('global', path),
                 e)
+
+
+log = logging.getLogger('certmgr')
+log.setLevel(logging.CRITICAL)
+logformat = logging.Formatter('%(levelname)s %(message)s')
+logconsole = logging.StreamHandler()
+logconsole.setFormatter(logformat)
+logconsole.setLevel(logging.CRITICAL)
+log.addHandler(logconsole)
+
+parse_config()
