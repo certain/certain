@@ -19,6 +19,18 @@ import errno
 import tempfile
 
 
+class LazyConfig(object):
+    """Class which calls parse_config the first time it is referenced.
+    
+    Allows user to override the default configfile value before it is used
+    
+    """
+    
+    def __getattr__(self, s):
+        parse_config()
+        return getattr(config, s)
+
+
 class StoreHandler(object):
     """Class to handle different store types"""
 
@@ -443,4 +455,8 @@ logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
 log.addHandler(logconsole)
 
-parse_config()
+#Calling config.* methods will call parse_config, reading the default
+#config file if the importing app hasn't previously
+#done certmgr.parse_config(configfile="...")
+config = LazyConfig()
+
