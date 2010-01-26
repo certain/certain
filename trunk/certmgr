@@ -5,7 +5,7 @@
 import certmgr
 from optparse import OptionParser
 
-certmgr.config = certmgr.configparse('/etc/certmgr/certmgr.cfg')
+certmgr.configparse('/etc/certmgr/certmgr.cfg')
 
 
 def main():
@@ -40,7 +40,7 @@ def main():
 
     if options.daemon:
         if certmgr.config.getboolean('manager', 'IsMaster'):
-            certmgr.Daemon()
+            certmgr.launch_daemon()
         else:
             log.error("IsMaster not set in configuration file!")
             sys.exit(2)
