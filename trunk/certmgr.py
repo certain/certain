@@ -17,15 +17,16 @@ import logging
 from contextlib import closing, nested
 import errno
 import tempfile
+import pysvn
 
 
 class LazyConfig(object):
     """Class which calls parse_config the first time it is referenced.
-    
+
     Allows user to override the default configfile value before it is used
-    
+
     """
-    
+
     def __getattr__(self, s):
         parse_config()
         return getattr(config, s)
@@ -44,8 +45,7 @@ class StoreHandler(object):
     def webdav(certobj):
         """Puts certificate on a webdav server"""
 
-        global config
-        url = urlparse(config.get('manager', 'StoreUrl'))
+        url = urlparse(config.get('global', 'StoreUrl'))
         certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
 
         log.debug("Writing cert: %s to server: %s", certfile, url)
@@ -62,6 +62,37 @@ class StoreHandler(object):
             log.error("Error writing to webdav server: %s", resp.status)
             return
 
+    @staticmethod
+    def svn(certobj):
+        storedir = config.get('global', 'StoreDir')
+        if not os.path.exists(storedir):
+            StoreHandler.setup_svn(storedir)
+
+        certfile = "%s/%s.pem" % (storedir, certobj.get_subject().CN)
+
+        log.debug("Storing cert: %s", certfile)
+
+        client = pysvn.Client()
+        client.update(storedir)
+        with open(certfile, 'w') as f_crt:
+            f_crt.write(
+                crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+
+        try:
+            client.add(certfile)
+        except:
+            #If add fails, its because its already under VC
+            pass
+
+        client.checkin(certfile, 'Add certificate')
+        #Update again to sync properties, info etc
+        client.update(storedir)
+
+    @staticmethod
+    def setup_svn(storedir):
+        client = pysvn.Client()
+        client.checkout(config.get('global', 'StoreUrl'), storedir)
+
 
 class MsgHandlerThread(threading.Thread):
 
@@ -74,13 +105,12 @@ class MsgHandlerThread(threading.Thread):
 
     def run(self):
 
-        global config
         csr = crypto.load_certificate_request(
             crypto.FILETYPE_PEM, self.msg)
         CN = csr.get_subject().CN
 
         if CN != self.src:
-            if config.getboolean('manager', 'HostVerify'):
+            if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname: %s doesn't match certificate CN: %s",
                          self.src, CN)
                 raise HostVerifyError
@@ -88,7 +118,7 @@ class MsgHandlerThread(threading.Thread):
                 log.warn("Hostname: %s doesn't match certificate CN: %s",
                          self.src, CN)
 
-        if config.getboolean('manager', 'AutoSign'):
+        if config.getboolean('global', 'AutoSign'):
             log.info("Auto-signing enabled, signing certificate")
             try:
                 certobj = cert.sign_csr(self.cakey, self.cacert, csr,
@@ -133,34 +163,28 @@ class CACertError(Exception):
 
 
 def ca_cert_file():
-    global config
     return "%s/%s" % (config.get('global', 'CAPath'),
                       config.get('global', 'CACert'))
 
 
 def ca_key_file():
-    global config
     return "%s/%s" % (config.get('global', 'CAPrivatePath'),
                       config.get('global', 'CAKey'))
 
 
 def cert_file(name):
-    global config
     return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
 
 
 def key_file(name):
-    global config
     return "%s/%s.key" % (config.get('global', 'PrivatePath'), name)
 
 
 def csr_file(name):
-    global config
     return "%s/%s.csr" % (config.get('global', 'CertPath'), name)
 
 
 def csr_cache_file(name):
-    global config
     return "%s/%s.csr" % (config.get('global', 'CSRCache'), name)
 
 
@@ -187,8 +211,7 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
 
 
 def make_certs():
-    global config
-    if config.getboolean('manager', 'IsMaster'):
+    if config.getboolean('global', 'IsMaster'):
         #Generate a CA if no certs exist
 
         log.info("Generating CA certificates for master")
@@ -251,8 +274,7 @@ def make_certs():
 
 
 def check_status():
-    global config
-    if config.getboolean('manager', 'IsMaster'):
+    if config.getboolean('global', 'IsMaster'):
         #Check CA certs
         try:
             with open(ca_cert_file()) as cacertfile:
@@ -311,8 +333,7 @@ def check_status():
 
 
 def csr_sign():
-    global config
-    if not config.getboolean('manager', 'IsMaster'):
+    if not config.getboolean('global', 'IsMaster'):
         log.error("Not running as a Certificate Master")
         sys.exit(2)
 
@@ -332,7 +353,7 @@ def csr_sign():
                 crypto.FILETYPE_PEM, f.read())
 
         if csr.get_subject().CN != os.path.splitext(file)[0]:
-            if config.getboolean('manager', 'HostVerify'):
+            if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
             else:
@@ -361,7 +382,7 @@ def csr_sign():
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
 
-            store = config.get('manager', 'StoreType')
+            store = config.get('global', 'StoreType')
             if store.lower() != "none":
                 log.info("Storing Signed Cert")
                 getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
@@ -376,8 +397,6 @@ def csr_sign():
 def send_csr(file=None):
     "Send csr to host"
 
-
-    global config
     sendfile = file or csr_file(config.get('cert', 'CN'))
 
     log.info("Sending CSR %s for signing", sendfile)
@@ -389,10 +408,8 @@ def send_csr(file=None):
 
 
 def launch_daemon():
-
-    global config
     cakey = cacert = None # Won't be used if auto-signing is turned off.
-    if config.getboolean('manager', 'AutoSign'):
+    if config.getboolean('global', 'AutoSign'):
         try:
             cakey, cacert = check_cacerts()
         except CACertError:
@@ -427,8 +444,6 @@ def check_cacerts():
 
 
 def check_paths():
-
-    global config
     log.debug("Checking (and creating) paths")
 
     for path, mode in [('RootPath', 0777),
@@ -459,4 +474,3 @@ log.addHandler(logconsole)
 #config file if the importing app hasn't previously
 #done certmgr.parse_config(configfile="...")
 config = LazyConfig()
-

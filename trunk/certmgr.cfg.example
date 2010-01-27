@@ -11,8 +11,6 @@ CSRCache = %(RootPath)s/CSRCache
 #Default hostname for Master should be set to certmgr
 MasterAddress = certmgr
 MasterPort = 35182
-
-[manager]
 #Should CSR's be automatically signed? (boolean)
 AutoSign = 0
 #Do we verify the CSR CommonName matches the requesting host?
@@ -20,9 +18,10 @@ AutoSign = 0
 HostVerify = 0
 #Set to 1 on the Master
 IsMaster = 0
-#StoreType can be: none, webdav
-StoreType = webdav
+#StoreType can be: none, svn
+StoreType = svn
 StoreUrl = https://certmgr/certs
+StoreDir = /etc/certmgr/store
 
 [ca]
 Bits = 4096
