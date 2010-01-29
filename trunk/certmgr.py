@@ -126,7 +126,8 @@ class StoreHandler(object):
                     self.client.checkout(config.get('global', 'StoreUrl'),
                                     self.storedir)
             else:
-                self.client.update(self.storedir)
+                with self.lock:
+                    self.client.update(self.storedir)
 
         def finalise(self):
             log.debug("Doing checkin of store")
