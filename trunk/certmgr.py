@@ -18,6 +18,7 @@ from contextlib import closing, nested
 import errno
 import tempfile
 import pysvn
+import abc
 
 
 class LazyConfig(object):
@@ -32,6 +33,30 @@ class LazyConfig(object):
         return getattr(config, s)
 
 
+class StoreBase(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def setup(self):
+        """Setup this specific store object."""
+        return
+
+    @abc.abstractmethod
+    def fetch(self):
+        """Retrieve certificates from the store."""
+        return
+
+    @abc.abstractmethod
+    def write(self, certobj):
+        """Write certificate to the central store."""
+        return
+
+    @abc.abstractmethod
+    def finalise(self):
+        """Finalise any pending actions on the store."""
+        return
+
+
 class StoreHandler(object):
     """Class to handle different store types"""
 
@@ -41,63 +66,96 @@ class StoreHandler(object):
 
         log.error("Unknown StoreType")
 
-    @staticmethod
-    def webdav(certobj):
-        """Puts certificate on a webdav server"""
+    class none(StoreBase):
 
-        url = urlparse(config.get('global', 'StoreUrl'))
-        certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
-
-        log.debug("Writing cert: %s to server: %s", certfile, url)
-
-        if url.scheme == "https":
-            web = httplib.HTTPSConnection(url.netloc)
-        else:
-            web = httplib.HTTPConnection(url.netloc)
-
-        web.request('PUT', certfile,
-                    (crypto.dump_certificate(crypto.FILETYPE_PEM, certobj)))
-        resp = web.getresponse()
-        if not 200 <= resp.status < 300:
-            log.error("Error writing to webdav server: %s", resp.status)
-            return
-
-    @staticmethod
-    def svn(certobj):
-        storedir = config.get('global', 'StoreDir')
-        if not os.path.exists(storedir):
-            StoreHandler.setup_svn(storedir)
-
-        certfile = "%s/%s.pem" % (storedir, certobj.get_subject().CN)
-
-        log.debug("Storing cert: %s", certfile)
-
-        client = pysvn.Client()
-        client.update(storedir)
-        with open(certfile, 'w') as f_crt:
-            f_crt.write(
-                crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
-
-        try:
-            client.add(certfile)
-        except:
-            #If add fails, its because its already under VC
+        def setup(self):
             pass
 
-        client.checkin(certfile, 'Add certificate')
-        #Update again to sync properties, info etc
-        client.update(storedir)
+        def finalise(self):
+            pass
 
-    @staticmethod
-    def setup_svn(storedir):
-        client = pysvn.Client()
-        client.checkout(config.get('global', 'StoreUrl'), storedir)
+        def fetch(self):
+            pass
+
+        def write(self, certobj):
+            pass
+
+    class webdav(StoreBase):
+
+        def setup(self):
+            pass
+
+        def finalise(self):
+            pass
+
+        def fetch(self):
+            pass
+
+        def write(self, certobj):
+            """Puts certificate on a webdav server"""
+
+            url = urlparse(config.get('global', 'StoreUrl'))
+            certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
+
+            log.debug("Writing cert: %s to server: %s", certfile, url)
+
+            if url.scheme == "https":
+                web = httplib.HTTPSConnection(url.netloc)
+            else:
+                web = httplib.HTTPConnection(url.netloc)
+
+            web.request('PUT', certfile,
+                        (crypto.dump_certificate(
+                            crypto.FILETYPE_PEM, certobj)))
+            resp = web.getresponse()
+            if not 200 <= resp.status < 300:
+                log.error("Error writing to webdav server: %s", resp.status)
+                return
+
+    class svn(StoreBase):
+
+        def __init__(self):
+            self.client = pysvn.Client()
+            self.lock = threading.Lock()
+
+        def setup(self):
+            log.debug("Setting up svn repository (co/update)")
+            self.storedir = config.get('global', 'StoreDir')
+            if not os.path.exists(self.storedir):
+                with self.lock:
+                    client.checkout(config.get('global', 'StoreUrl'),
+                                    self.storedir)
+
+        def finalise(self):
+            log.debug("Doing checkin of store")
+            with self.lock:
+                self.client.checkin(self.storedir, "Adding certificates")
+
+        def fetch(self):
+            pass
+
+        def write(self, certobj):
+            certfile = "%s/%s.pem" % (self.storedir, certobj.get_subject().CN)
+            log.debug("Storing cert: %s", certfile)
+
+            with nested(self.lock, open(certfile, 'w')) as (locked, f_crt):
+                self.client.update(self.storedir)
+                f_crt.write(
+                    crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+
+            try:
+                with self.lock:
+                    self.client.add(certfile)
+            except Exception:
+                #If add fails, its because its already under VC
+                pass
 
 
 class MsgHandlerThread(threading.Thread):
 
-    def __init__(self, msg, src, cakey, cacert):
+    def __init__(self, store, msg, src, cakey, cacert):
         threading.Thread.__init__(self)
+        self.store = store
         self.msg = msg
         self.src = socket.gethostbyaddr(src[0])[0]
         self.cakey = cakey
@@ -126,26 +184,29 @@ class MsgHandlerThread(threading.Thread):
             except Exception, e:
                 log.error("Signing failed. Will save for later signing.")
                 log.error(str(e))
-            else:
-                with tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(cert_file(CN)), delete=False) as f_crt:
-                    log.info("Writing certificate: %s", cert_file(CN))
-                    f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(cert_file(CN)), delete=False) as f_crt:
+                log.info("Writing certificate: %s", cert_file(CN))
+                f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                             certobj))
 
                 os.rename(f_crt.name, cert_file(CN))
 
                 log.info("Storing Signed Cert")
-                getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
+                self.store.write(certobj)
 
-        #Just save the CSR for later signing
-        with tempfile.NamedTemporaryFile(
-            dir=os.path.dirname(csr_cache_file(self.src)),
-            delete=False) as f_csr:
-            log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
-            f_csr.write(self.msg)
+        else:
+            #Just save the CSR for later signing
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(csr_cache_file(self.src)),
+                delete=False) as f_csr:
+                log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
+                f_csr.write(self.msg)
 
-        os.rename(f_csr.name, csr_cache_file(self.src))
+                os.rename(f_csr.name, csr_cache_file(self.src))
+
+        self.store.finalise()
 
 
 class HostVerifyError(Exception):
@@ -346,6 +407,10 @@ def csr_sign():
 
     csrpath = config.get('global', 'CSRCache')
 
+    store = getattr(StoreHandler, config.get('global', 'StoreType'),
+                    StoreHandler.storeerror)()
+    store.setup()
+
     for file in os.listdir(csrpath):
         log.info("Processing file %s:", file)
         with open(os.path.join(csrpath, file)) as f:
@@ -382,16 +447,16 @@ def csr_sign():
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
 
-            store = config.get('global', 'StoreType')
-            if store.lower() != "none":
-                log.info("Storing Signed Cert")
-                getattr(StoreHandler, store, StoreHandler.storeerror)(certobj)
+            log.info("Storing Signed Cert")
+            store.write(certobj)
 
         elif dosign == "d":
             log.info("Deleting CSR file: %s", file)
             os.remove(os.path.join(csrpath, file))
         else:
             log.info("Skipping CSR file: %s", file)
+
+        store.finalise()
 
 
 def send_csr(file=None):
@@ -416,6 +481,10 @@ def launch_daemon():
             log.error("Can't perform auto-signing without CA Certs")
             sys.exit(2)
 
+    store = getattr(StoreHandler, config.get('global', 'StoreType'),
+                    StoreHandler.storeerror)()
+    store.setup()
+
     #Listen for incoming messages
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setblocking(0)
@@ -427,7 +496,7 @@ def launch_daemon():
         if s not in read:
             continue
         msg, src = s.recvfrom(65535)
-        thread = MsgHandlerThread(msg, src, cakey, cacert)
+        thread = MsgHandlerThread(store, msg, src, cakey, cacert)
         thread.start()
 
 
