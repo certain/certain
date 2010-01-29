@@ -39,7 +39,7 @@ def main():
         certmgr.make_certs()
 
     if options.daemon:
-        if certmgr.config.getboolean('manager', 'IsMaster'):
+        if certmgr.config.getboolean('global', 'IsMaster'):
             certmgr.launch_daemon()
         else:
             log.error("IsMaster not set in configuration file!")
