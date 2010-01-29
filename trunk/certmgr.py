@@ -123,8 +123,10 @@ class StoreHandler(object):
             self.storedir = config.get('global', 'StoreDir')
             if not os.path.exists(self.storedir):
                 with self.lock:
-                    client.checkout(config.get('global', 'StoreUrl'),
+                    self.client.checkout(config.get('global', 'StoreUrl'),
                                     self.storedir)
+            else:
+                self.client.update(self.storedir)
 
         def finalise(self):
             log.debug("Doing checkin of store")
