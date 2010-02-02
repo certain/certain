@@ -135,14 +135,16 @@ class StoreHandler(object):
                 self.client.checkin(self.storedir, "Adding certificates")
 
         def fetch(self):
-            pass
+            with self.lock:
+                self.client.update(self.storedir)
+
 
         def write(self, certobj):
             certfile = "%s/%s.pem" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
 
             with nested(self.lock,
-                        creat(certfile, mode=0666)) as (locked, f_crt):
+                        open(certfile, 'w')) as (locked, f_crt):
                 self.client.update(self.storedir)
                 f_crt.write(
                     crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
