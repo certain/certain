@@ -64,7 +64,7 @@ class StoreHandler(object):
     def storeerror(certobj):
         """Error method - default for getattr to deal with unknown StoreType"""
 
-        log.error("Unknown StoreType")
+        log.warn("Unknown StoreType")
 
     class none(StoreBase):
 
@@ -138,7 +138,6 @@ class StoreHandler(object):
             with self.lock:
                 self.client.update(self.storedir)
 
-
         def write(self, certobj):
             certfile = "%s/%s.pem" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
@@ -188,8 +187,8 @@ class MsgHandlerThread(threading.Thread):
                 certobj = cert.sign_csr(self.cakey, self.cacert, csr,
                               config.getint('cert', 'CertLifetime'))
             except Exception, e:
-                log.error("Signing failed. Will save for later signing.")
-                log.error(str(e))
+                log.warn("Signing failed. Will save for later signing.")
+                log.warn(str(e))
 
             with tempfile.NamedTemporaryFile(
                 dir=os.path.dirname(cert_file(CN)), delete=False) as f_crt:
@@ -277,7 +276,7 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
     logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
 
-def make_certs():
+def make_certs(caoverwrite=False):
     if config.getboolean('global', 'IsMaster'):
         #Generate a CA if no certs exist
 
@@ -294,18 +293,37 @@ def make_certs():
                 raise
             key = cert.key_from_file(ca_key_file())
 
-        with tempfile.NamedTemporaryFile(
-            dir=os.path.dirname(ca_cert_file()), delete=False) as f_cacert:
-            cacert = cert.make_ca(key, CN,
-                                  config.get('ca', 'OU'),
-                                  config.get('ca', 'O'),
-                                  config.get('ca', 'L'),
-                                  config.get('ca', 'ST'),
-                                  config.get('ca', 'C'),
-                                  config.getint('ca', 'CALifetime'))
-            f_cacert.write(
-                crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+        if caoverwrite:
+            #We want to overwrite the CA
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(ca_cert_file()), delete=False) as f_cacert:
+                cacert = cert.make_ca(key, CN,
+                                      config.get('ca', 'OU'),
+                                      config.get('ca', 'O'),
+                                      config.get('ca', 'L'),
+                                      config.get('ca', 'ST'),
+                                      config.get('ca', 'C'),
+                                      config.getint('ca', 'CALifetime'))
+                f_cacert.write(
+                    crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+
             os.rename(f_cacert.name, ca_cert_file())
+        else:
+            #Only create if it doesn't already exist
+            try:
+                with creat(ca_cert_file(), mode=0666) as f_cacert:
+                    cacert = cert.make_ca(key, CN,
+                                          config.get('ca', 'OU'),
+                                          config.get('ca', 'O'),
+                                          config.get('ca', 'L'),
+                                          config.get('ca', 'ST'),
+                                          config.get('ca', 'C'),
+                                          config.getint('ca', 'CALifetime'))
+                    f_cacert.write(
+                        crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+            except OSError, e:
+                if e.errno != errno.EEXIST: # File exists
+                    raise
 
     #Make client key and CSR if needed
     CN = config.get('cert', 'CN')
@@ -340,23 +358,32 @@ def make_certs():
         send_csr()
 
 
+def check_expiry(certobj):
+    """Return expiry time in seconds
+
+    certobj: OpenSSL X509 Object
+
+    """
+
+    return int(time.mktime(time.strptime(
+        certobj.get_notAfter()[0:14],
+        '%Y%m%d%H%M%S')) - time.time())
+
+
 def check_status():
     if config.getboolean('global', 'IsMaster'):
         #Check CA certs
         try:
             with open(ca_cert_file()) as cacertfile:
-                cacertinf = crypto.load_certificate(
+                cacert = crypto.load_certificate(
                     crypto.FILETYPE_PEM, cacertfile.read())
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
             log.error("Public CA file missing: %s", ca_cert_file())
+            sys.exit(2)
         else:
-            #Get cert time without timezone chars
-            notafter = cacertinf.get_notAfter()[0:14]
-            #If notafter is less than a week away...
-            if (time.mktime(time.strptime(notafter, '%Y%m%d%H%M%S'))
-                - time.time()) < 604800:
+            if check_expiry(cacert) < config.get('ca', 'ExpiryDeadline'):
                 log.warn("CA certificate %s expires in less than 7 days!",
                         cacertfile)
 
@@ -367,6 +394,7 @@ def check_status():
             if e.errno != errno.ENOENT:
                 raise
             log.error("Private CA file missing: %s", ca_key_file())
+            sys.exit(2)
 
 
     #Check certs status
@@ -478,6 +506,54 @@ def send_csr(file=None):
                             config.getint('global', 'MasterPort')))
 
 
+class CertExpiry(object):
+
+    def __init__(self, cakey, cacert, store):
+        self.cacert = cacert
+        self.cakey = cakey
+        self.store = store
+
+    def expiry_timer(self):
+        try:
+            crt = cert.cert_from_file(cert_file(config.get('cert', 'CN')))
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            log.warn("Certificate missing. Call --makecerts.")
+        else:
+            log.debug("Cert expiry timer waiting for %s seconds",
+                      check_expiry(crt) - config.getint(
+                          'cert', 'ExpiryDeadline'))
+            self.tcrt = threading.Timer(
+                check_expiry(crt) - config.getint('cert', 'ExpiryDeadline'),
+                self.expiry_action, [crt])
+            self.tcrt.daemon = True
+            self.tcrt.start()
+
+        if self.cacert is not None:
+            log.debug("CA expiry timer waiting for %s seconds",
+                      check_expiry(self.cacert) - config.getint(
+                          'ca', 'ExpiryDeadline'))
+            self.tca = threading.Timer(
+                check_expiry(self.cacert) - config.getint(
+                    'ca', 'ExpiryDeadline'),
+                self.expiry_action, [self.cacert], {'caoverwrite': 'True'})
+            self.tca.daemon = True
+            self.tca.start()
+
+    def expiry_action(self, cert, caoverwrite=False):
+        """Launched when expired cert timer completes"""
+
+        #Need to allow overwriting of CA
+        #Re-sending of CSR will happen for free
+        make_certs(caoverwrite)
+
+        #Update the local cert store
+        self.store.fetch()
+
+        self.expiry_timer()
+
+
 def launch_daemon():
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('global', 'AutoSign'):
@@ -490,6 +566,9 @@ def launch_daemon():
     store = getattr(StoreHandler, config.get('global', 'StoreType'),
                     StoreHandler.storeerror)()
     store.setup()
+
+    certexpiry = CertExpiry(cakey, cacert, store)
+    certexpiry.expiry_timer()
 
     #Listen for incoming messages
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
