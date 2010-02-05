@@ -543,7 +543,7 @@ class CertExpiry(object):
         crttimerlength = 0
         try:
             crt = cert.cert_from_file(crtpath)
-          except Exception:
+        except Exception:
             log.warn("Certificate missing. Call --makecerts.")
         else:
             log.debug("Cert expiry timer waiting for %s seconds",
