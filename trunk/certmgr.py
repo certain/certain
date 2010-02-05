@@ -52,9 +52,26 @@ class StoreBase(object):
         return
 
     @abc.abstractmethod
-    def finalise(self):
-        """Finalise any pending actions on the store."""
+    def checkpoint(self):
+        """Checkpoint any pending actions on the store."""
         return
+
+
+class ExpiryNotifyHandler(object):
+    """Class to handle different expiry notification methods"""
+
+    @staticmethod
+    def notifyerror(certobj):
+        """Error method - default to deal with unknown Notify types"""
+
+        log.warn("Unknown Notification Type")
+
+    @staticmethod
+    def log(certobj):
+        """Log cert expiry messages"""
+
+        log.warn("Certificate is about to expire: %s",
+                 certobj.get_subject().CN)
 
 
 class StoreHandler(object):
@@ -71,7 +88,7 @@ class StoreHandler(object):
         def setup(self):
             pass
 
-        def finalise(self):
+        def checkpoint(self):
             pass
 
         def fetch(self):
@@ -85,7 +102,7 @@ class StoreHandler(object):
         def setup(self):
             pass
 
-        def finalise(self):
+        def checkpoint(self):
             pass
 
         def fetch(self):
@@ -95,7 +112,7 @@ class StoreHandler(object):
             """Puts certificate on a webdav server"""
 
             url = urlparse(config.get('global', 'StoreUrl'))
-            certfile = "%s/%s.pem" % (url.path, certobj.get_subject().CN)
+            certfile = "%s/%s.crt" % (url.path, certobj.get_subject().CN)
 
             log.debug("Writing cert: %s to server: %s", certfile, url)
 
@@ -129,7 +146,7 @@ class StoreHandler(object):
                 with self.lock:
                     self.client.update(self.storedir)
 
-        def finalise(self):
+        def checkpoint(self):
             log.debug("Doing checkin of store")
             with self.lock:
                 self.client.checkin(self.storedir, "Adding certificates")
@@ -139,14 +156,17 @@ class StoreHandler(object):
                 self.client.update(self.storedir)
 
         def write(self, certobj):
-            certfile = "%s/%s.pem" % (self.storedir, certobj.get_subject().CN)
+            certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
 
-            with nested(self.lock,
-                        open(certfile, 'w')) as (locked, f_crt):
+            with nested(self.lock, tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(certfile),
+                    delete=False)) as (locked, f_crt):
                 self.client.update(self.storedir)
                 f_crt.write(
                     crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+
+            os.rename(f_crt.name, certfile)
 
             try:
                 with self.lock:
@@ -185,33 +205,34 @@ class MsgHandlerThread(threading.Thread):
             log.info("Auto-signing enabled, signing certificate")
             try:
                 certobj = cert.sign_csr(self.cakey, self.cacert, csr,
-                              config.getint('cert', 'CertLifetime'))
+                                        config.getint('cert', 'CertLifetime'))
             except Exception, e:
                 log.warn("Signing failed. Will save for later signing.")
                 log.warn(str(e))
 
-            with tempfile.NamedTemporaryFile(
-                dir=os.path.dirname(cert_file(CN)), delete=False) as f_crt:
-                log.info("Writing certificate: %s", cert_file(CN))
-                f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
-                            certobj))
+            else:
+                with tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(cert_file(CN)),
+                    delete=False) as f_crt:
+                    log.info("Writing certificate: %s", cert_file(CN))
+                    f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+                                                        certobj))
 
                 os.rename(f_crt.name, cert_file(CN))
 
                 log.info("Storing Signed Cert")
                 self.store.write(certobj)
+                self.store.checkpoint()
+                return
 
-        else:
-            #Just save the CSR for later signing
-            with tempfile.NamedTemporaryFile(
-                dir=os.path.dirname(csr_cache_file(self.src)),
-                delete=False) as f_csr:
-                log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
-                f_csr.write(self.msg)
+        #Just save the CSR for later signing
+        with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(csr_cache_file(self.src)),
+            delete=False) as f_csr:
+            log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
+            f_csr.write(self.msg)
 
-                os.rename(f_csr.name, csr_cache_file(self.src))
-
-        self.store.finalise()
+            os.rename(f_csr.name, csr_cache_file(self.src))
 
 
 class HostVerifyError(Exception):
@@ -352,7 +373,7 @@ def make_certs(caoverwrite=False):
         f_csr.write(
             crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr))
 
-        os.rename(f_csr.name, csr_file(CN))
+    os.rename(f_csr.name, csr_file(CN))
 
     if config.getboolean('client', 'AutoSend'):
         send_csr()
@@ -490,7 +511,7 @@ def csr_sign():
         else:
             log.info("Skipping CSR file: %s", file)
 
-        store.finalise()
+        store.checkpoint()
 
 
 def send_csr(file=None):
@@ -514,8 +535,12 @@ class CertExpiry(object):
         self.store = store
 
     def expiry_timer(self):
+
+        self.store.fetch()
+        crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
+                             config.get('cert', 'CN'), "crt")
         try:
-            crt = cert.cert_from_file(cert_file(config.get('cert', 'CN')))
+            crt = cert.cert_from_file(crtpath)
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -524,9 +549,13 @@ class CertExpiry(object):
             log.debug("Cert expiry timer waiting for %s seconds",
                       check_expiry(crt) - config.getint(
                           'cert', 'ExpiryDeadline'))
-            self.tcrt = threading.Timer(
-                check_expiry(crt) - config.getint('cert', 'ExpiryDeadline'),
-                self.expiry_action, [crt])
+
+            timerlength = check_expiry(crt) - config.getint(
+                'cert', 'ExpiryDeadline')
+            #Set a minimum time to repeat notifications
+            if timerlength <= config.getint('global', 'NotifyTimer'):
+                timerlength = config.getint('global', 'NotifyTimer')
+            self.tcrt = threading.Timer(timerlength, self.expiry_action, [crt])
             self.tcrt.daemon = True
             self.tcrt.start()
 
@@ -534,15 +563,25 @@ class CertExpiry(object):
             log.debug("CA expiry timer waiting for %s seconds",
                       check_expiry(self.cacert) - config.getint(
                           'ca', 'ExpiryDeadline'))
-            self.tca = threading.Timer(
-                check_expiry(self.cacert) - config.getint(
-                    'ca', 'ExpiryDeadline'),
-                self.expiry_action, [self.cacert], {'caoverwrite': 'True'})
+            timerlength = check_expiry(self.cacert) - config.getint(
+                'ca', 'ExpiryDeadline')
+            if timerlength <= 300:
+                timerlength = 60
+            self.tca = threading.Timer(timerlength,
+                self.expiry_action,
+                [self.cacert],
+                {'caoverwrite': 'True', 'notify': 'True'})
             self.tca.daemon = True
             self.tca.start()
 
-    def expiry_action(self, cert, caoverwrite=False):
+    def expiry_action(self, cert, caoverwrite=False, notify=False):
         """Launched when expired cert timer completes"""
+
+        if notify:
+            for notifytype in config.get(
+                'global', 'ExpiryNotifiers').split(','):
+                notify = getattr(ExpiryNotifyHandler, notifytype,
+                                 ExpiryNotifyHandler.notifyerror)(cert)
 
         #Need to allow overwriting of CA
         #Re-sending of CSR will happen for free
