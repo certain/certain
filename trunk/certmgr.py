@@ -539,23 +539,23 @@ class CertExpiry(object):
         self.store.fetch()
         crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
                              config.get('cert', 'CN'), "crt")
+
+        crttimerlength = 0
         try:
             crt = cert.cert_from_file(crtpath)
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
+          except Exception:
             log.warn("Certificate missing. Call --makecerts.")
         else:
             log.debug("Cert expiry timer waiting for %s seconds",
                       check_expiry(crt) - config.getint(
                           'cert', 'ExpiryDeadline'))
-
-            timerlength = check_expiry(crt) - config.getint(
+            crttimerlength = check_expiry(crt) - config.getint(
                 'cert', 'ExpiryDeadline')
-            #Set a minimum time to repeat notifications
-            if timerlength <= config.getint('global', 'NotifyTimer'):
-                timerlength = config.getint('global', 'NotifyTimer')
-            self.tcrt = threading.Timer(timerlength, self.expiry_action, [crt])
+
+            if crttimerlength <= config.getint('global', 'NotifyTimer'):
+                crttimerlength = config.getint('global', 'NotifyTimer')
+            self.tcrt = threading.Timer(crttimerlength,
+                                        self.expiry_action, [crt])
             self.tcrt.daemon = True
             self.tcrt.start()
 
@@ -563,14 +563,15 @@ class CertExpiry(object):
             log.debug("CA expiry timer waiting for %s seconds",
                       check_expiry(self.cacert) - config.getint(
                           'ca', 'ExpiryDeadline'))
-            timerlength = check_expiry(self.cacert) - config.getint(
+            catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
-            if timerlength <= 300:
-                timerlength = 60
-            self.tca = threading.Timer(timerlength,
-                self.expiry_action,
-                [self.cacert],
-                {'caoverwrite': 'True', 'notify': 'True'})
+            if catimerlength <= config.getint('global', 'NotifyTimer'):
+                catimerlength = config.getint('global', 'NotifyTimer')
+            self.tca = threading.Timer(catimerlength,
+                                       self.expiry_action,
+                                       [self.cacert],
+                                       {'caoverwrite': 'True',
+                                        'notify': 'True'})
             self.tca.daemon = True
             self.tca.start()
 
