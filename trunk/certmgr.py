@@ -464,13 +464,13 @@ def csr_sign():
                     StoreHandler.storeerror)()
     store.setup()
 
-    for file in os.listdir(csrpath):
-        log.info("Processing file %s:", file)
-        with open(os.path.join(csrpath, file)) as f:
+    for csr_file in os.listdir(csrpath):
+        log.info("Processing file %s:", csr_file)
+        with open(os.path.join(csrpath, csr_file)) as f:
             csr = crypto.load_certificate_request(
                 crypto.FILETYPE_PEM, f.read())
 
-        if csr.get_subject().CN != os.path.splitext(file)[0]:
+        if csr.get_subject().CN != os.path.splitext(csr_file)[0]:
             if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
@@ -479,7 +479,7 @@ def csr_sign():
 
         dosign = raw_input(
             "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
-                file, csr.get_subject().CN)).strip().lower()
+                csr_file, csr.get_subject().CN)).strip().lower()
 
         if dosign == "y":
             log.info("Signing certificate")
@@ -504,10 +504,10 @@ def csr_sign():
             store.write(certobj)
 
         elif dosign == "d":
-            log.info("Deleting CSR file: %s", file)
-            os.remove(os.path.join(csrpath, file))
+            log.info("Deleting CSR file: %s", csr_file)
+            os.remove(os.path.join(csrpath, csr_file))
         else:
-            log.info("Skipping CSR file: %s", file)
+            log.info("Skipping CSR file: %s", csr_file)
 
         store.checkpoint()
 
