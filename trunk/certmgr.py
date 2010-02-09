@@ -133,20 +133,16 @@ class StoreHandler(object):
 
         def __init__(self):
             self.client = pysvn.Client()
-            self.client.callback_ssl_server_trust_prompt = (
-                ssl_server_trust_prompt)
+            self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
+                True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
             self.lock = threading.Lock()
 
         def setup(self):
             log.debug("Setting up svn repository (co/update)")
             self.storedir = config.get('global', 'StoreDir')
-            if not os.path.exists(self.storedir):
-                with self.lock:
-                    self.client.checkout(config.get('global', 'StoreUrl'),
+            with self.lock:
+                self.client.checkout(config.get('global', 'StoreUrl'),
                                     self.storedir)
-            else:
-                with self.lock:
-                    self.client.update(self.storedir)
 
         def checkpoint(self):
             log.debug("Doing checkin of store")
@@ -249,11 +245,6 @@ class CACertError(Exception):
 
     def __init__(self, args="Errors opening CA Certificates"):
         Exception.__init__(self, args)
-
-
-def ssl_server_trust_prompt(trust_data):
-    #8 = Cert not yet trusted - i.e auto-trust
-    return True, 8, False
 
 
 def ca_cert_file():
@@ -553,31 +544,28 @@ class CertExpiry(object):
         except Exception:
             log.warn("Certificate missing. Call --makecerts.")
         else:
-            log.debug("Cert expiry timer waiting for %s seconds",
-                      check_expiry(crt) - config.getint(
-                          'cert', 'ExpiryDeadline'))
             crttimerlength = check_expiry(crt) - config.getint(
                 'cert', 'ExpiryDeadline')
+            log.debug("Cert expiry timer waiting for %d seconds",
+                crttimerlength)
 
             if crttimerlength <= config.getint('global', 'NotifyTimer'):
-                log.debug("Resetting cert timer wait to %s seconds",
-                          config.getint('global', 'NotifyTimer'))
                 crttimerlength = config.getint('global', 'NotifyTimer')
+                log.debug("Resetting cert timer wait to %d seconds",
+                    crttimerlength)
             self.tcrt = threading.Timer(crttimerlength,
                                         self.expiry_action, [crt])
             self.tcrt.daemon = True
             self.tcrt.start()
 
         if self.cacert is not None:
-            log.debug("CA expiry timer waiting for %s seconds",
-                      check_expiry(self.cacert) - config.getint(
-                          'ca', 'ExpiryDeadline'))
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
+            log.debug("CA expiry timer waiting for %d seconds", catimerlength)
             if catimerlength <= config.getint('global', 'NotifyTimer'):
-                log.debug("Resetting CA timer wait to %s seconds",
-                          config.getint('global', 'NotifyTimer'))
                 catimerlength = config.getint('global', 'NotifyTimer')
+                log.debug("Resetting CA timer wait to %d seconds",
+                    catimerlength)
             self.tca = threading.Timer(catimerlength,
                                        self.expiry_action,
                                        [self.cacert],
@@ -614,11 +602,10 @@ class Polling(object):
     def poll_timer(self):
 
         if self.polltime:
-            log.debug("Starting poll timer for %s seconds", self.polltime)
+            log.debug("Starting poll timer for %d seconds", self.polltime)
             self.timer = threading.Timer(self.polltime, self.poll_action)
             self.timer.daemon = True
             self.timer.start()
-        return
 
     def poll_action(self):
         log.debug("Poll: calling store.fetch")
