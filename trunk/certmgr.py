@@ -359,7 +359,6 @@ def make_certs(caoverwrite=False):
             raise
         key = cert.key_from_file(key_file(CN))
 
-        csrcache = config.get('global', 'CSRCache')
     with tempfile.NamedTemporaryFile(
         dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
         csr = cert.make_csr(key, CN,
@@ -407,8 +406,7 @@ def check_status():
                         cacertfile)
 
         try:
-            with open(ca_key_file()) as cakeyfile:
-                pass
+            open(ca_key_file()).close()
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -437,8 +435,7 @@ def check_status():
             log.warn("Certificate %s expires in less than 7 days!", certfile)
 
     try:
-        with open(key_file(CN)) as keyfile:
-            pass
+        open(key_file(CN)).close()
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
