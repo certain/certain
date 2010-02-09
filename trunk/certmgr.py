@@ -133,6 +133,8 @@ class StoreHandler(object):
 
         def __init__(self):
             self.client = pysvn.Client()
+            self.client.callback_ssl_server_trust_prompt = (
+                ssl_server_trust_prompt)
             self.lock = threading.Lock()
 
         def setup(self):
@@ -247,6 +249,11 @@ class CACertError(Exception):
 
     def __init__(self, args="Errors opening CA Certificates"):
         Exception.__init__(self, args)
+
+
+def ssl_server_trust_prompt(trust_data):
+    #8 = Cert not yet trusted - i.e auto-trust
+    return True, 8, False
 
 
 def ca_cert_file():
@@ -553,6 +560,8 @@ class CertExpiry(object):
                 'cert', 'ExpiryDeadline')
 
             if crttimerlength <= config.getint('global', 'NotifyTimer'):
+                log.debug("Resetting cert timer wait to %s seconds",
+                          config.getint('global', 'NotifyTimer'))
                 crttimerlength = config.getint('global', 'NotifyTimer')
             self.tcrt = threading.Timer(crttimerlength,
                                         self.expiry_action, [crt])
@@ -566,6 +575,8 @@ class CertExpiry(object):
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
             if catimerlength <= config.getint('global', 'NotifyTimer'):
+                log.debug("Resetting CA timer wait to %s seconds",
+                          config.getint('global', 'NotifyTimer'))
                 catimerlength = config.getint('global', 'NotifyTimer')
             self.tca = threading.Timer(catimerlength,
                                        self.expiry_action,
@@ -594,6 +605,27 @@ class CertExpiry(object):
         self.expiry_timer()
 
 
+class Polling(object):
+
+    def __init__(self, store, polltime):
+        self.store = store
+        self.polltime = polltime
+
+    def poll_timer(self):
+
+        if self.polltime:
+            log.debug("Starting poll timer for %s seconds", self.polltime)
+            self.timer = threading.Timer(self.polltime, self.poll_action)
+            self.timer.daemon = True
+            self.timer.start()
+        return
+
+    def poll_action(self):
+        log.debug("Poll: calling store.fetch")
+        self.store.fetch()
+        self.poll_timer()
+
+
 def launch_daemon():
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('global', 'AutoSign'):
@@ -609,6 +641,12 @@ def launch_daemon():
 
     certexpiry = CertExpiry(cakey, cacert, store)
     certexpiry.expiry_timer()
+
+    try:
+        polling = Polling(store, config.getint('global', 'PollTimer'))
+        polling.poll_timer()
+    except ConfigParser.Error:
+        pass
 
     #Listen for incoming messages
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
