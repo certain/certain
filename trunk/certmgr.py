@@ -19,6 +19,8 @@ import errno
 import tempfile
 import pysvn
 import abc
+import smtplib
+from email.mime.text import MIMEText
 
 
 class LazyConfig(object):
@@ -72,6 +74,29 @@ class ExpiryNotifyHandler(object):
 
         log.warn("Certificate is about to expire: %s",
                  certobj.get_subject().CN)
+
+    @staticmethod
+    def email(certobj):
+        """email a warning about cert expiry"""
+
+        log.debug("Emailing about cert expiry")
+        msg = MIMEText(
+"""CA Expiry Warning\n\n
+CA %s Expires at: %s\n
+Please update your CA certificate!""" % (certobj.get_subject().CN,
+                time.ctime(float(certobj.get_notAfter()[0:14]))))
+
+        msg['To'] = config.get('email', 'ToAddress')
+        msg['From'] = config.get('email', 'FromAddress')
+        msg['Subject'] = "CA Expiry Warning"
+
+        try:
+            s = smtplib.SMTP(config.get('email', 'SMTPServer'))
+            s.sendmail(config.get('email', 'FromAddress'),
+                       [config.get('email', 'ToAddress')],
+                       msg.as_string())
+        except smtplib.SMTPException, e:
+            log.warn("SMTP error: %s", e)
 
 
 class StoreHandler(object):
@@ -546,8 +571,8 @@ class CertExpiry(object):
             log.debug("Cert expiry timer waiting for %d seconds",
                 crttimerlength)
 
-            if crttimerlength <= config.getint('global', 'NotifyTimer'):
-                crttimerlength = config.getint('global', 'NotifyTimer')
+            if crttimerlength <= config.getint('global', 'NotifyFrequency'):
+                crttimerlength = config.getint('global', 'NotifyFrequency')
                 log.debug("Resetting cert timer wait to %d seconds",
                     crttimerlength)
             self.tcrt = threading.Timer(crttimerlength,
@@ -559,8 +584,8 @@ class CertExpiry(object):
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
             log.debug("CA expiry timer waiting for %d seconds", catimerlength)
-            if catimerlength <= config.getint('global', 'NotifyTimer'):
-                catimerlength = config.getint('global', 'NotifyTimer')
+            if catimerlength <= config.getint('global', 'NotifyFrequency'):
+                catimerlength = config.getint('global', 'NotifyFrequency')
                 log.debug("Resetting CA timer wait to %d seconds",
                     catimerlength)
             self.tca = threading.Timer(catimerlength,
@@ -576,7 +601,7 @@ class CertExpiry(object):
 
         if notify:
             for notifytype in config.get(
-                'global', 'ExpiryNotifiers').split(','):
+                'global', 'ExpiryNotifiers').replace(' ', '').split(','):
                 notify = getattr(ExpiryNotifyHandler, notifytype,
                                  ExpiryNotifyHandler.notifyerror)(cert)
 

@@ -24,9 +24,9 @@ StoreUrl = https://certmgr/certs
 StoreDir = /etc/certmgr/store
 #Types of notifictions to send when certificates are due to expire
 #Can be log, email
-ExpiryNotifiers = log
+ExpiryNotifiers = log, email
 #How often to send Notification messages for expired certs (seconds)
-NotifyTimer = 86400
+NotifyFrequency = 86400
 
 [ca]
 Bits = 4096
@@ -56,3 +56,8 @@ ExpiryDeadline = 608400
 
 [client]
 AutoSend = 1
+
+[email]
+SMTPServer = smtp.example.com
+ToAddress = admin@example.com
+FromAddress = certmgr@example.com
