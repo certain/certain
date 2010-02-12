@@ -20,13 +20,16 @@ def main():
                       help="Start CertMgr Daemon.")
     parser.add_option("-c", "--check",
                       action="store_true", dest="check",
-                      help="Check status of own CA and Client Certificates.")
+                      help="Check status of own CA and Client certificates.")
     parser.add_option("-x", "--sign",
                       action="store_true", dest="sign",
                       help="View and sign queued CSRs.")
     parser.add_option("-s", "--send",
                       action="store_true", dest="send",
                       help="Send a CSR file to the CertMgr Master.")
+    parser.add_option("-g", "--get",
+                      action="store_true", dest="get",
+                      help="Update certificates from the central store.")
     parser.add_option("-f", "--file",
                       dest="file",
                       help="Specifies the CSR file to be sent with --send.  \
@@ -54,6 +57,12 @@ def main():
     if options.check:
         certmgr.check_status()
 
+    if options.get:
+        store = getattr(certmgr.StoreHandler,
+                        certmgr.config.get('global', 'StoreType'),
+                        certmgr.StoreHandler.storeerror)()
+        store.setup()
+        store.fetch()
 
 if __name__ == "__main__":
     main()
