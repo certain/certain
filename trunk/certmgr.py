@@ -632,19 +632,20 @@ def launch_daemon():
     except ConfigParser.Error:
         pass
 
-    #Listen for incoming messages
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setblocking(0)
-    s.bind((config.get('global', 'MasterAddress'),
-            config.getint('global', 'MasterPort')))
+    if config.get('global', 'IsMaster'):
+        #Listen for incoming messages
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setblocking(0)
+        s.bind((config.get('global', 'MasterAddress'),
+                config.getint('global', 'MasterPort')))
 
-    while True:
-        read, write, error = select.select([s], [], [])
-        if s not in read:
-            continue
-        msg, src = s.recvfrom(65535)
-        thread = MsgHandlerThread(store, msg, src, cakey, cacert)
-        thread.start()
+        while True:
+            read, write, error = select.select([s], [], [])
+            if s not in read:
+                continue
+            msg, src = s.recvfrom(65535)
+            thread = MsgHandlerThread(store, msg, src, cakey, cacert)
+            thread.start()
 
 
 def check_cacerts():

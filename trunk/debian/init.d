@@ -22,13 +22,6 @@ set -e
 test -x ${DAEMON} || exit 0
 
 
-IS_MASTER=$(grep "IsMaster" /etc/certmgr/certmgr.cfg | sed -e 's/.*=\s*//')
-if [ "${IS_MASTER}" != "1" ]; then
-	log_daemon_msg "To enable CertMgr daemon, please edit /etc/certmgr/certmgr.cfg and set IsMaster = 1"
-	log_end_msg 0
-	exit 0
-fi
-
 [ -z "$SERVER_USER" ] && SERVER_USER=certmgr
 [ -z "$SERVER_GROUP" ] && SERVER_GROUP=certmgr
 
