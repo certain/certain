@@ -67,12 +67,14 @@ class LazyConfig(object):
 
     """
 
-    def __getattr__(self, s):
+    def __getattr__(self, result):
         parse_config()
-        return getattr(config, s)
+        return getattr(config, result)
 
 
 class StoreBase(object):
+    """Abstract base class for StoreHandler 'plugins'"""
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -117,6 +119,7 @@ class StoreHandler(object):
         log.warn("Unknown StoreType")
 
     class none(StoreBase):
+        """'Empty' none StoreHandler plugin"""
 
         def setup(self):
             pass
@@ -131,6 +134,7 @@ class StoreHandler(object):
             pass
 
     class webdav(StoreBase):
+        """Webdav StoreHandler plugin"""
 
         def setup(self):
             pass
@@ -163,6 +167,7 @@ class StoreHandler(object):
                 return
 
     class svn(StoreBase):
+        """Subversion StoreHandler plugin"""
 
         def __init__(self):
             self.client = pysvn.Client()
@@ -171,6 +176,8 @@ class StoreHandler(object):
             self.lock = threading.Lock()
 
         def setup(self):
+            """Perform an svn checkout"""
+
             log.debug("Setting up svn repository (co)")
             self.storedir = config.get('global', 'StoreDir')
             with self.lock:
@@ -178,15 +185,21 @@ class StoreHandler(object):
                                     self.storedir)
 
         def checkpoint(self):
+            """Perform an svn checkin"""
+
             log.debug("Doing checkin of store")
             with self.lock:
                 self.client.checkin(self.storedir, "Adding certificates")
 
         def fetch(self):
+            """Perform an svn update"""
+
             with self.lock:
                 self.client.update(self.storedir)
 
         def write(self, certobj):
+            """Write the certificate to the local svn repository"""
+
             certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
 
@@ -242,13 +255,14 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
         msg['From'] = config.get('email', 'FromAddress')
         msg['Subject'] = "CA Expiry Warning"
 
-        s = smtplib.SMTP(config.get('email', 'SMTPServer'))
-        s.sendmail(msg['From'],
-                   msg['To'],
-                   msg.as_string())
+        smtp = smtplib.SMTP(config.get('email', 'SMTPServer'))
+        smtp.sendmail(msg['From'],
+                      msg['To'],
+                      msg.as_string())
 
 
 class MsgHandlerThread(threading.Thread):
+    """Handle incoming messages in separate threads"""
 
     def __init__(self, store, msg, src, cakey, cacert):
         threading.Thread.__init__(self)
@@ -259,7 +273,6 @@ class MsgHandlerThread(threading.Thread):
         self.cacert = cacert
 
     def run(self):
-
         csr = crypto.load_certificate_request(
             crypto.FILETYPE_PEM, self.msg)
         CN = csr.get_subject().CN
@@ -308,6 +321,7 @@ class MsgHandlerThread(threading.Thread):
 
 
 class CertExpiry(object):
+    """Timer threads to watch for certificate expiry"""
 
     def __init__(self, cakey, cacert, store):
         self.cacert = cacert
@@ -393,11 +407,15 @@ class Polling(object):
 
 
 def ca_cert_file():
+    """Return full path of CA cert file from config"""
+
     return "%s/%s" % (config.get('global', 'CAPath'),
                       config.get('global', 'CACert'))
 
 
 def ca_key_file():
+    """Return full path of CA key file from config"""
+
     return "%s/%s" % (config.get('global', 'CAPrivatePath'),
                       config.get('global', 'CAKey'))
 
@@ -518,18 +536,26 @@ def cert_from_file(certfilename):
 
 
 def cert_file(name):
+    """Return full path of cert file from config"""
+
     return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
 
 
 def key_file(name):
+    """Return full path of key file from config"""
+
     return "%s/%s.key" % (config.get('global', 'PrivatePath'), name)
 
 
 def csr_file(name):
+    """Return full path of csr file from config"""
+
     return "%s/%s.csr" % (config.get('global', 'CertPath'), name)
 
 
 def csr_cache_file(name):
+    """Return full path of csr file from config"""
+
     return "%s/%s.csr" % (config.get('global', 'CSRCache'), name)
 
 
@@ -546,6 +572,8 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
 
 def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
+    """Parse the config file into 'config' and set up logging"""
+
     global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
     if not config.read(configfile):
@@ -556,6 +584,8 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
 
 
 def make_certs(caoverwrite=False):
+    """Create CA certificates, key file and csr file"""
+
     if config.getboolean('global', 'IsMaster'):
         #Generate a CA if no certs exist
 
@@ -704,6 +734,8 @@ def check_status():
 
 
 def process_csr():
+    """Process received CSR files (human intervention"""
+
     if not config.getboolean('global', 'IsMaster'):
         log.error("Not running as a Certificate Master")
         sys.exit(2)
@@ -768,20 +800,22 @@ def process_csr():
         store.checkpoint()
 
 
-def send_csr(file=None):
-    "Send csr to host"
+def send_csr(localfile=None):
+    "Send csr to certmgr master"
 
-    sendfile = file or csr_file(config.get('cert', 'CN'))
+    sendfile = localfile or csr_file(config.get('cert', 'CN'))
 
     log.info("Sending CSR %s for signing", sendfile)
     with nested(
             open(sendfile),
-            closing(socket.socket(type=socket.SOCK_DGRAM))) as (f, s):
-        s.sendto(f.read(), (config.get('global', 'MasterAddress'),
+            closing(socket.socket(type=socket.SOCK_DGRAM))) as (f_csr, sock):
+        sock.sendto(f_csr.read(), (config.get('global', 'MasterAddress'),
                             config.getint('global', 'MasterPort')))
 
 
 def launch_daemon():
+    """Start the certmgr listening socket and/or expiry timers"""
+
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('global', 'AutoSign'):
         try:
@@ -819,6 +853,8 @@ def launch_daemon():
 
 
 def check_cacerts():
+    """Check for existence of CA cert and key file"""
+
     try:
         cakey = key_from_file(ca_key_file())
         cacert = cert_from_file(ca_cert_file())
