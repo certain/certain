@@ -103,53 +103,12 @@ class StoreBase(object):
         self.checkpoint()
 
 
-class ExpiryNotifyHandler(object):
-    """Class to handle different expiry notification methods"""
-
-    @classmethod
-    def dispatch(cls, name, certobj):
-        getattr(cls, name, cls.notifyerror)(certobj)
-
-    @staticmethod
-    def notifyerror(certobj):
-        """Error method - default to deal with unknown Notify types"""
-
-        log.warn("Unknown Notification Type")
-
-    @staticmethod
-    def log(certobj):
-        """Log cert expiry messages"""
-
-        log.warn("Certificate is about to expire: %s",
-                 certobj.get_subject().CN)
-
-    @staticmethod
-    def email(certobj):
-        """Email a warning about cert expiry"""
-
-        log.debug("Emailing about cert expiry")
-        msg = MIMEText(
-"""CA Expiry Warning\n\n
-CA %s expires at: %s\n
-Please update your CA certificate!""" % (certobj.get_subject().CN,
-                time.ctime(float(certobj.get_notAfter()[0:14]))))
-
-        msg['To'] = config.get('email', 'ToAddress')
-        msg['From'] = config.get('email', 'FromAddress')
-        msg['Subject'] = "CA Expiry Warning"
-
-        s = smtplib.SMTP(config.get('email', 'SMTPServer'))
-        s.sendmail(msg['From'],
-                   msg['To'],
-                   msg.as_string())
-
-
 class StoreHandler(object):
     """Class to handle different store types"""
 
     @classmethod
     def dispatch(cls, name):
-        getattr(cls, name, cls.storeerror)()
+        return getattr(cls, name, cls.storeerror)()
 
     @staticmethod
     def storeerror():
@@ -248,6 +207,47 @@ class StoreHandler(object):
                 pass
 
 
+class ExpiryNotifyHandler(object):
+    """Class to handle different expiry notification methods"""
+
+    @classmethod
+    def dispatch(cls, name, certobj):
+        return getattr(cls, name, cls.notifyerror)(certobj)
+
+    @staticmethod
+    def notifyerror(certobj):
+        """Error method - default to deal with unknown Notify types"""
+
+        log.warn("Unknown Notification Type")
+
+    @staticmethod
+    def log(certobj):
+        """Log cert expiry messages"""
+
+        log.warn("Certificate is about to expire: %s",
+                 certobj.get_subject().CN)
+
+    @staticmethod
+    def email(certobj):
+        """Email a warning about cert expiry"""
+
+        log.debug("Emailing about cert expiry")
+        msg = MIMEText(
+"""CA Expiry Warning\n\n
+CA %s expires at: %s\n
+Please update your CA certificate!""" % (certobj.get_subject().CN,
+                time.ctime(float(certobj.get_notAfter()[0:14]))))
+
+        msg['To'] = config.get('email', 'ToAddress')
+        msg['From'] = config.get('email', 'FromAddress')
+        msg['Subject'] = "CA Expiry Warning"
+
+        s = smtplib.SMTP(config.get('email', 'SMTPServer'))
+        s.sendmail(msg['From'],
+                   msg['To'],
+                   msg.as_string())
+
+
 class MsgHandlerThread(threading.Thread):
 
     def __init__(self, store, msg, src, cakey, cacert):
@@ -305,6 +305,91 @@ class MsgHandlerThread(threading.Thread):
             f_csr.write(self.msg)
 
             os.rename(f_csr.name, csr_cache_file(self.src))
+
+
+class CertExpiry(object):
+
+    def __init__(self, cakey, cacert, store):
+        self.cacert = cacert
+        self.cakey = cakey
+        self.store = store
+
+    def expiry_timer(self):
+
+        self.store.fetch()
+        crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
+                             config.get('cert', 'CN'), "crt")
+
+        try:
+            crt = cert_from_file(crtpath)
+        except Exception:
+            log.warn("Certificate missing. Call --makecerts.")
+        else:
+            crttimerlength = check_expiry(crt) - config.getint(
+                'cert', 'ExpiryDeadline')
+            log.debug("Cert expiry timer waiting for %d seconds",
+                crttimerlength)
+
+            if crttimerlength <= config.getint('global', 'NotifyFrequency'):
+                crttimerlength = config.getint('global', 'NotifyFrequency')
+                log.debug("Resetting cert timer wait to %d seconds",
+                    crttimerlength)
+            self.tcrt = threading.Timer(crttimerlength,
+                                        self.expiry_action, [crt])
+            self.tcrt.daemon = True
+            self.tcrt.start()
+
+        if self.cacert is not None:
+            catimerlength = check_expiry(self.cacert) - config.getint(
+                'ca', 'ExpiryDeadline')
+            log.debug("CA expiry timer waiting for %d seconds", catimerlength)
+            if catimerlength <= config.getint('global', 'NotifyFrequency'):
+                catimerlength = config.getint('global', 'NotifyFrequency')
+                log.debug("Resetting CA timer wait to %d seconds",
+                    catimerlength)
+            self.tca = threading.Timer(catimerlength,
+                                       self.expiry_action,
+                                       [self.cacert],
+                                       {'caoverwrite': True,
+                                        'notify': True})
+            self.tca.daemon = True
+            self.tca.start()
+
+    def expiry_action(self, cert, caoverwrite=False, notify=False):
+        """Launched when expired cert timer completes"""
+
+        if notify:
+            for notifytype in config.get(
+                'global', 'ExpiryNotifiers').replace(' ', '').split(','):
+                ExpiryNotifyHandler.dispatch(notifytype, cert)
+
+        #Need to allow overwriting of CA
+        #Re-sending of CSR will happen for free
+        make_certs(caoverwrite)
+
+        #Update the local cert store
+        self.store.fetch()
+
+        self.expiry_timer()
+
+
+class Polling(object):
+
+    def __init__(self, store, polltime):
+        self.store = store
+        self.polltime = polltime
+
+    def poll_timer(self):
+        if self.polltime:
+            log.debug("Starting poll timer for %d seconds", self.polltime)
+            self.timer = threading.Timer(self.polltime, self.poll_action)
+            self.timer.daemon = True
+            self.timer.start()
+
+    def poll_action(self):
+        log.debug("Poll: calling store.fetch")
+        self.store.fetch()
+        self.poll_timer()
 
 
 def ca_cert_file():
@@ -694,91 +779,6 @@ def send_csr(file=None):
             closing(socket.socket(type=socket.SOCK_DGRAM))) as (f, s):
         s.sendto(f.read(), (config.get('global', 'MasterAddress'),
                             config.getint('global', 'MasterPort')))
-
-
-class CertExpiry(object):
-
-    def __init__(self, cakey, cacert, store):
-        self.cacert = cacert
-        self.cakey = cakey
-        self.store = store
-
-    def expiry_timer(self):
-
-        self.store.fetch()
-        crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
-                             config.get('cert', 'CN'), "crt")
-
-        try:
-            crt = cert_from_file(crtpath)
-        except Exception:
-            log.warn("Certificate missing. Call --makecerts.")
-        else:
-            crttimerlength = check_expiry(crt) - config.getint(
-                'cert', 'ExpiryDeadline')
-            log.debug("Cert expiry timer waiting for %d seconds",
-                crttimerlength)
-
-            if crttimerlength <= config.getint('global', 'NotifyFrequency'):
-                crttimerlength = config.getint('global', 'NotifyFrequency')
-                log.debug("Resetting cert timer wait to %d seconds",
-                    crttimerlength)
-            self.tcrt = threading.Timer(crttimerlength,
-                                        self.expiry_action, [crt])
-            self.tcrt.daemon = True
-            self.tcrt.start()
-
-        if self.cacert is not None:
-            catimerlength = check_expiry(self.cacert) - config.getint(
-                'ca', 'ExpiryDeadline')
-            log.debug("CA expiry timer waiting for %d seconds", catimerlength)
-            if catimerlength <= config.getint('global', 'NotifyFrequency'):
-                catimerlength = config.getint('global', 'NotifyFrequency')
-                log.debug("Resetting CA timer wait to %d seconds",
-                    catimerlength)
-            self.tca = threading.Timer(catimerlength,
-                                       self.expiry_action,
-                                       [self.cacert],
-                                       {'caoverwrite': True,
-                                        'notify': True})
-            self.tca.daemon = True
-            self.tca.start()
-
-    def expiry_action(self, cert, caoverwrite=False, notify=False):
-        """Launched when expired cert timer completes"""
-
-        if notify:
-            for notifytype in config.get(
-                'global', 'ExpiryNotifiers').replace(' ', '').split(','):
-                ExpiryNotifyHandler.dispatch(notifytype, cert)
-
-        #Need to allow overwriting of CA
-        #Re-sending of CSR will happen for free
-        make_certs(caoverwrite)
-
-        #Update the local cert store
-        self.store.fetch()
-
-        self.expiry_timer()
-
-
-class Polling(object):
-
-    def __init__(self, store, polltime):
-        self.store = store
-        self.polltime = polltime
-
-    def poll_timer(self):
-        if self.polltime:
-            log.debug("Starting poll timer for %d seconds", self.polltime)
-            self.timer = threading.Timer(self.polltime, self.poll_action)
-            self.timer.daemon = True
-            self.timer.start()
-
-    def poll_action(self):
-        log.debug("Poll: calling store.fetch")
-        self.store.fetch()
-        self.poll_timer()
 
 
 def launch_daemon():
