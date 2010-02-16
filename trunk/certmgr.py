@@ -21,6 +21,30 @@ import abc
 import smtplib
 from email.mime.text import MIMEText
 
+__all__ = ['StoreHandler',
+           'check_status',
+           'csr_sign',
+           'send_csr',
+           'make_certs',
+           'launch_daemon',
+           'parse_config',
+           'check_paths',
+           'config',
+           'key_from_file',
+           'cert_from_file',
+           'ca_cert_file',
+           'ca_key_file',
+           'cert_file',
+           'key_file',
+           'csr_file',
+           'csr_cache_file',
+           'check_cacerts',
+           'make_ca',
+           'make_key',
+           'make_csr',
+           'sign_csr',
+           'check_expiry']
+
 
 class LazyConfig(object):
     """Class which calls parse_config the first time it is referenced.
