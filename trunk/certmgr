@@ -58,11 +58,9 @@ def main():
         certmgr.check_status()
 
     if options.get:
-        store = getattr(certmgr.StoreHandler,
-                        certmgr.config.get('global', 'StoreType'),
-                        certmgr.StoreHandler.storeerror)()
-        store.setup()
-        store.fetch()
+        with certmgr.StoreHandler.dispatch(
+                certmgr.config.get('global', 'StoreType')) as store:
+            store.fetch()
 
 if __name__ == "__main__":
     main()

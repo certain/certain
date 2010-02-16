@@ -81,9 +81,20 @@ class StoreBase(object):
         """Checkpoint any pending actions on the store."""
         return
 
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.checkpoint()
+
 
 class ExpiryNotifyHandler(object):
     """Class to handle different expiry notification methods"""
+
+    @classmethod
+    def dispatch(cls, name, certobj):
+        getattr(cls, name, cls.notifyerror)(certobj)
 
     @staticmethod
     def notifyerror(certobj):
@@ -122,8 +133,12 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
 class StoreHandler(object):
     """Class to handle different store types"""
 
+    @classmethod
+    def dispatch(cls, name):
+        getattr(cls, name, cls.storeerror)()
+
     @staticmethod
-    def storeerror(certobj):
+    def storeerror():
         """Error method - default for getattr to deal with unknown StoreType"""
 
         log.warn("Unknown StoreType")
@@ -509,7 +524,7 @@ def make_certs(caoverwrite=False):
 
     log.info("Making key and CSR for %s", CN)
 
-    #We never want to overwrite a key file,so do nothing if it already exists
+    #We never want to overwrite a key file, so do nothing if it already exists.
     try:
         with creat(key_file(CN), mode=0666) as f_key:
             key = make_key(config.getint('cert', 'Bits'))
@@ -617,8 +632,7 @@ def csr_sign():
 
     csrpath = config.get('global', 'CSRCache')
 
-    store = getattr(StoreHandler, config.get('global', 'StoreType'),
-                    StoreHandler.storeerror)()
+    store = StoreHandler.dispatch(config.get('global', 'StoreType'))
     store.setup()
 
     for csr_file in os.listdir(csrpath):
@@ -737,8 +751,7 @@ class CertExpiry(object):
         if notify:
             for notifytype in config.get(
                 'global', 'ExpiryNotifiers').replace(' ', '').split(','):
-                notify = getattr(ExpiryNotifyHandler, notifytype,
-                                 ExpiryNotifyHandler.notifyerror)(cert)
+                ExpiryNotifyHandler.dispatch(notifytype, cert)
 
         #Need to allow overwriting of CA
         #Re-sending of CSR will happen for free
@@ -779,8 +792,7 @@ def launch_daemon():
             log.error("Can't perform auto-signing without CA Certs")
             sys.exit(2)
 
-    store = getattr(StoreHandler, config.get('global', 'StoreType'),
-                    StoreHandler.storeerror)()
+    store = StoreHandler.dispatch(config.get('global', 'StoreType'))
     store.setup()
 
     certexpiry = CertExpiry(cakey, cacert, store)
