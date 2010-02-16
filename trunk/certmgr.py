@@ -23,6 +23,7 @@ from email.mime.text import MIMEText
 
 __all__ = ['StoreHandler',
            'check_status',
+           'process_csr',
            'sign_csr',
            'send_csr',
            'make_certs',
@@ -42,7 +43,6 @@ __all__ = ['StoreHandler',
            'make_ca',
            'make_key',
            'make_csr',
-           'sign_csr',
            'check_expiry']
 
 
@@ -703,7 +703,7 @@ def check_status():
         sys.exit(2)
 
 
-def sign_csr():
+def process_csr():
     if not config.getboolean('global', 'IsMaster'):
         log.error("Not running as a Certificate Master")
         sys.exit(2)
