@@ -8,7 +8,6 @@ import time
 import select
 import ConfigParser
 import threading
-import cert
 import os
 from OpenSSL import crypto
 import httplib
@@ -90,13 +89,10 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
         msg['From'] = config.get('email', 'FromAddress')
         msg['Subject'] = "CA Expiry Warning"
 
-        try:
-            s = smtplib.SMTP(config.get('email', 'SMTPServer'))
-            s.sendmail(config.get('email', 'FromAddress'),
-                       [config.get('email', 'ToAddress')],
-                       msg.as_string())
-        except smtplib.SMTPException, e:
-            log.warn("SMTP error: %s", e)
+        s = smtplib.SMTP(config.get('email', 'SMTPServer'))
+        s.sendmail(msg['From'],
+                   msg['To'],
+                   msg.as_string())
 
 
 class StoreHandler(object):
@@ -227,7 +223,7 @@ class MsgHandlerThread(threading.Thread):
         if config.getboolean('global', 'AutoSign'):
             log.info("Auto-signing enabled, signing certificate")
             try:
-                certobj = cert.sign_csr(self.cakey, self.cacert, csr,
+                certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
             except Exception, e:
                 log.warn("Signing failed. Will save for later signing.")
@@ -282,6 +278,121 @@ def ca_key_file():
                       config.get('global', 'CAKey'))
 
 
+def make_key(bits=2048):
+    """Create RSA key
+
+    bits: Bits for RSA key (defaults to 2048)
+
+    Returns the Pkey object
+
+    """
+
+    key = crypto.PKey()
+    key.generate_key(crypto.TYPE_RSA, bits)
+
+    return key
+
+
+def make_csr(key, CN,
+             OU="CertMgr Dept", O="CertMgr Org",
+             L="CertMgr City", ST="CertMgr State", C="UK"):
+    """Make a certificate request from an RSA key
+
+    key: String containing key
+    CN: Common Name (aka CA hostname)
+    OU: Organisational Unit (CertMgr Dept)
+    O: Organisation (CertMgr Org)
+    L: Location (CertMgr City)
+    ST: State (CertMgr State)
+    C: Country (UK)
+
+    Returns an X509 object
+
+    """
+
+    csr = crypto.X509Req()
+    name = csr.get_subject()
+    name.C = C
+    name.ST = ST
+    name.L = L
+    name.O = O
+    name.OU = OU
+    name.CN = CN
+
+    csr.set_pubkey(key)
+    csr.sign(key, 'md5')
+
+    return csr
+
+
+def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
+    """Sign certificate request.
+
+    cakey: CA key object
+    cacert: CA Public Certificate object
+    csr: Certificate Request string
+    lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
+
+    Returns X509 object
+
+    """
+
+    cert = crypto.X509()
+    cert.set_pubkey(csr.get_pubkey())
+    cert.set_subject(csr.get_subject())
+    ##FIXME## Serial numbers should increment!
+    cert.set_serial_number(1)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(lifetime)
+    cert.set_issuer(cacert.get_subject())
+    cert.sign(cakey, 'md5')
+
+    return cert
+
+
+def make_ca(key, CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
+            ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
+    """Generate a certificate authority
+
+    CN: Common Name
+    OU: Organisational Unit (CertMgr Dept)
+    O: Organisation (CertMgr Org)
+    L: Location (CertMgr City)
+    ST: State (CertMgr State)
+    C: Country (UK)
+    lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
+
+    """
+
+    csr = make_csr(key, CN, OU, O, L, ST, C)
+
+    cacert = crypto.X509()
+    cacert.set_issuer(csr.get_subject())
+    cacert.set_subject(csr.get_subject())
+    cacert.set_pubkey(csr.get_pubkey())
+
+    cacert.set_serial_number(0)
+    cacert.gmtime_adj_notBefore(0)
+    cacert.gmtime_adj_notAfter(lifetime)
+    cacert.sign(key, 'md5')
+
+    return cacert
+
+
+def key_from_file(keyfilename):
+    """Read a private key from file"""
+
+    with open(keyfilename) as f:
+        return crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
+
+
+def cert_from_file(certfilename):
+    """Read a certificate from file"""
+
+    with open(certfilename) as f:
+        return crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+
+
 def cert_file(name):
     return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
 
@@ -330,18 +441,18 @@ def make_certs(caoverwrite=False):
         #We never want to overwrite a key file,so do nothing if one exists
         try:
             with creat(ca_key_file(), mode=0666) as f_key:
-                key = cert.make_key(config.getint('ca', 'Bits'))
+                key = make_key(config.getint('ca', 'Bits'))
                 f_key.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
         except OSError, e:
             if e.errno != errno.EEXIST: # File exists
                 raise
-            key = cert.key_from_file(ca_key_file())
+            key = key_from_file(ca_key_file())
 
         if caoverwrite:
             #We want to overwrite the CA
             with tempfile.NamedTemporaryFile(
                 dir=os.path.dirname(ca_cert_file()), delete=False) as f_cacert:
-                cacert = cert.make_ca(key, CN,
+                cacert = make_ca(key, CN,
                                       config.get('ca', 'OU'),
                                       config.get('ca', 'O'),
                                       config.get('ca', 'L'),
@@ -356,7 +467,7 @@ def make_certs(caoverwrite=False):
             #Only create if it doesn't already exist
             try:
                 with creat(ca_cert_file(), mode=0666) as f_cacert:
-                    cacert = cert.make_ca(key, CN,
+                    cacert = make_ca(key, CN,
                                           config.get('ca', 'OU'),
                                           config.get('ca', 'O'),
                                           config.get('ca', 'L'),
@@ -377,16 +488,16 @@ def make_certs(caoverwrite=False):
     #We never want to overwrite a key file,so do nothing if it already exists
     try:
         with creat(key_file(CN), mode=0666) as f_key:
-            key = cert.make_key(config.getint('cert', 'Bits'))
+            key = make_key(config.getint('cert', 'Bits'))
             f_key.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
     except OSError, e:
         if e.errno != errno.EEXIST: # File exists
             raise
-        key = cert.key_from_file(key_file(CN))
+        key = key_from_file(key_file(CN))
 
     with tempfile.NamedTemporaryFile(
         dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
-        csr = cert.make_csr(key, CN,
+        csr = make_csr(key, CN,
                             config.get('cert', 'OU'),
                             config.get('cert', 'O'),
                             config.get('cert', 'L'),
@@ -506,7 +617,7 @@ def csr_sign():
         if dosign == "y":
             log.info("Signing certificate")
 
-            certobj = cert.sign_csr(cakey, cacert, csr,
+            certobj = sign_csr(cakey, cacert, csr,
                                     config.getint('cert', 'CertLifetime'))
 
             with tempfile.NamedTemporaryFile(
@@ -562,7 +673,7 @@ class CertExpiry(object):
 
         crttimerlength = 0
         try:
-            crt = cert.cert_from_file(crtpath)
+            crt = cert_from_file(crtpath)
         except Exception:
             log.warn("Certificate missing. Call --makecerts.")
         else:
@@ -675,8 +786,8 @@ def launch_daemon():
 
 def check_cacerts():
     try:
-        cakey = cert.key_from_file(ca_key_file())
-        cacert = cert.cert_from_file(ca_cert_file())
+        cakey = key_from_file(ca_key_file())
+        cacert = cert_from_file(ca_cert_file())
         return cakey, cacert
     except IOError, e:
         if e.errno != errno.ENOENT:

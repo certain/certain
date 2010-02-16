@@ -2,7 +2,7 @@
 
 """Certificate Management System"""
 
-from certmgr import certmgr
+import certmgr
 from optparse import OptionParser
 
 certmgr.parse_config('/etc/certmgr/certmgr.cfg')

@@ -3,7 +3,7 @@
 prefix=src
 
 install:
-	install -d $(prefix)/usr/share/pyshared/certmgr
+	install -d $(prefix)/usr/share/pyshared/
 	install -d $(prefix)/usr/bin
 	install -d $(prefix)/etc/certmgr
 	install -d -m 0700 $(prefix)/etc/certmgr/CA
@@ -12,9 +12,7 @@ install:
 	install -d $(prefix)/etc/certmgr/CSRCache
 	install -d $(prefix)/etc/certmgr/certs
 
-	install certmgr.py $(prefix)/usr/share/pyshared/certmgr/
-	install cert.py $(prefix)/usr/share/pyshared/certmgr/
-	install __init__.py $(prefix)/usr/share/pyshared/certmgr/
+	install certmgr.py $(prefix)/usr/share/pyshared/
 	install certmgr $(prefix)/usr/bin/
 	install certmgr.cfg.example $(prefix)/etc/certmgr/certmgr.cfg
 
