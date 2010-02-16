@@ -23,7 +23,7 @@ from email.mime.text import MIMEText
 
 __all__ = ['StoreHandler',
            'check_status',
-           'csr_sign',
+           'sign_csr',
            'send_csr',
            'make_certs',
            'launch_daemon',
@@ -44,6 +44,20 @@ __all__ = ['StoreHandler',
            'make_csr',
            'sign_csr',
            'check_expiry']
+
+
+class HostVerifyError(Exception):
+    """Errors in Certificate Hostname Verification"""
+
+    def __init__(self, args="Hostname doesn't match certificate CN value"):
+        Exception.__init__(self, args)
+
+
+class CACertError(Exception):
+    """Error opening CA Certificates"""
+
+    def __init__(self, args="Errors opening CA Certificates"):
+        Exception.__init__(self, args)
 
 
 class LazyConfig(object):
@@ -111,12 +125,12 @@ class ExpiryNotifyHandler(object):
 
     @staticmethod
     def email(certobj):
-        """email a warning about cert expiry"""
+        """Email a warning about cert expiry"""
 
         log.debug("Emailing about cert expiry")
         msg = MIMEText(
 """CA Expiry Warning\n\n
-CA %s Expires at: %s\n
+CA %s expires at: %s\n
 Please update your CA certificate!""" % (certobj.get_subject().CN,
                 time.ctime(float(certobj.get_notAfter()[0:14]))))
 
@@ -198,7 +212,7 @@ class StoreHandler(object):
             self.lock = threading.Lock()
 
         def setup(self):
-            log.debug("Setting up svn repository (co/update)")
+            log.debug("Setting up svn repository (co)")
             self.storedir = config.get('global', 'StoreDir')
             with self.lock:
                 self.client.checkout(config.get('global', 'StoreUrl'),
@@ -229,7 +243,7 @@ class StoreHandler(object):
             try:
                 with self.lock:
                     self.client.add(certfile)
-            except Exception:
+            except ARealException:
                 #If add fails, its because its already under VC
                 pass
 
@@ -291,20 +305,6 @@ class MsgHandlerThread(threading.Thread):
             f_csr.write(self.msg)
 
             os.rename(f_csr.name, csr_cache_file(self.src))
-
-
-class HostVerifyError(Exception):
-    """Errors in Certificate Hostname Verification"""
-
-    def __init__(self, args="Hostname doesn't match certificate CN value"):
-        Exception.__init__(self, args)
-
-
-class CACertError(Exception):
-    """Error opening CA Certificates"""
-
-    def __init__(self, args="Errors opening CA Certificates"):
-        Exception.__init__(self, args)
 
 
 def ca_cert_file():
@@ -618,7 +618,7 @@ def check_status():
         sys.exit(2)
 
 
-def csr_sign():
+def sign_csr():
     if not config.getboolean('global', 'IsMaster'):
         log.error("Not running as a Certificate Master")
         sys.exit(2)
@@ -709,7 +709,6 @@ class CertExpiry(object):
         crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
                              config.get('cert', 'CN'), "crt")
 
-        crttimerlength = 0
         try:
             crt = cert_from_file(crtpath)
         except Exception:
@@ -740,8 +739,8 @@ class CertExpiry(object):
             self.tca = threading.Timer(catimerlength,
                                        self.expiry_action,
                                        [self.cacert],
-                                       {'caoverwrite': 'True',
-                                        'notify': 'True'})
+                                       {'caoverwrite': True,
+                                        'notify': True})
             self.tca.daemon = True
             self.tca.start()
 
@@ -770,7 +769,6 @@ class Polling(object):
         self.polltime = polltime
 
     def poll_timer(self):
-
         if self.polltime:
             log.debug("Starting poll timer for %d seconds", self.polltime)
             self.timer = threading.Timer(self.polltime, self.poll_action)

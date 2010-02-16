@@ -52,7 +52,7 @@ def main():
         certmgr.send_csr(options.file)
 
     if options.sign:
-        certmgr.csr_sign()
+        certmgr.sign_csr()
 
     if options.check:
         certmgr.check_status()
