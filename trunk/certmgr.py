@@ -215,8 +215,8 @@ class StoreHandler(object):
             try:
                 with self.lock:
                     self.client.add(certfile)
-            except ARealException:
-                #If add fails, its because its already under VC
+            except pysvn.ClientError, e:
+                log.warn("Failed to add %s to repos: %s", certfile, e)
                 pass
 
 
@@ -291,7 +291,7 @@ class MsgHandlerThread(threading.Thread):
             try:
                 certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
-            except Exception, e:
+            except crypto.Error, e:
                 log.warn("Signing failed. Will save for later signing.")
                 log.warn(str(e))
 
@@ -336,7 +336,7 @@ class CertExpiry(object):
 
         try:
             crt = cert_from_file(crtpath)
-        except Exception:
+        except crypto.Error:
             log.warn("Certificate missing. Call --makecerts.")
         else:
             crttimerlength = check_expiry(crt) - config.getint(
@@ -834,6 +834,7 @@ def launch_daemon():
         polling = Polling(store, config.getint('global', 'PollTimer'))
         polling.poll_timer()
     except ConfigParser.Error:
+        log.warn("PollTimer value not set in config")
         pass
 
     if config.get('global', 'IsMaster'):
