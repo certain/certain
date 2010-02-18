@@ -348,10 +348,8 @@ class CertExpiry(object):
         self.store = store
 
     def expiry_timer(self):
-
-        self.store.fetch()
-        crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
-                             config.get('cert', 'CN'), "crt")
+        crtpath = "%s/%s.crt" % (config.get('global', 'StoreDir'),
+                             config.get('cert', 'CN'))
 
         try:
             crt = cert_from_file(crtpath)
@@ -392,19 +390,20 @@ class CertExpiry(object):
     def expiry_action(self, cert, caoverwrite=False, notify=False):
         """Launched when expired cert timer completes"""
 
-        if notify:
-            for notifytype in config.get(
-                'global', 'ExpiryNotifiers').replace(' ', '').split(','):
-                ExpiryNotifyHandler.dispatch(notifytype, cert)
+        try:
+            if notify:
+                for notifytype in config.get(
+                    'global', 'ExpiryNotifiers').replace(' ', '').split(','):
+                    ExpiryNotifyHandler.dispatch(notifytype, cert)
 
-        #Need to allow overwriting of CA
-        #Re-sending of CSR will happen for free
-        make_certs(caoverwrite)
+            #Need to allow overwriting of CA
+            #Re-sending of CSR will happen for free
+            make_certs(caoverwrite)
 
-        #Update the local cert store
-        self.store.fetch()
-
-        self.expiry_timer()
+            #Update the local cert store
+            self.store.fetch()
+        finally:
+            self.expiry_timer()
 
 
 class Polling(object):
@@ -422,9 +421,11 @@ class Polling(object):
 
     @logexception
     def poll_action(self):
-        log.debug("Poll: calling store.fetch")
-        self.store.fetch()
-        self.poll_timer()
+        try:
+            log.debug("Poll: calling store.fetch")
+            self.store.fetch()
+        finally:
+            self.poll_timer()
 
 
 def ca_cert_file():
