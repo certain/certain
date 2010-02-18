@@ -46,6 +46,13 @@ __all__ = ['StoreHandler',
            'check_expiry']
 
 
+class StoreError(Exception):
+    """Errors raised from calling StoreHandler sub-classes"""
+
+    def __init__(self, args="Error calling store method"):
+        Exception.__init__(self, args)
+
+
 class HostVerifyError(Exception):
     """Errors in Certificate Hostname Verification"""
 
@@ -164,7 +171,8 @@ class StoreHandler(object):
             resp = web.getresponse()
             if not 200 <= resp.status < 300:
                 log.error("Error writing to webdav server: %s", resp.status)
-                return
+                raise StoreError(
+                    "Error writing to webdav server: %s" % resp.status)
 
     class svn(StoreBase):
         """Subversion StoreHandler plugin"""
@@ -181,21 +189,30 @@ class StoreHandler(object):
             log.debug("Setting up svn repository (co)")
             self.storedir = config.get('global', 'StoreDir')
             with self.lock:
-                self.client.checkout(config.get('global', 'StoreUrl'),
-                                    self.storedir)
+                try:
+                    self.client.checkout(config.get('global', 'StoreUrl'),
+                                         self.storedir)
+                except pysvn.ClientError, e:
+                    raise StoreError(e)
 
         def checkpoint(self):
             """Perform an svn checkin"""
 
             log.debug("Doing checkin of store")
             with self.lock:
-                self.client.checkin(self.storedir, "Adding certificates")
+                try:
+                    self.client.checkin(self.storedir, "Adding certificates")
+                except pysvn.ClientError, e:
+                    raise StoreError(e)
 
         def fetch(self):
             """Perform an svn update"""
 
             with self.lock:
-                self.client.update(self.storedir)
+                try:
+                    self.client.update(self.storedir)
+                except pysvn.ClientError, e:
+                    raise StoreError(e)
 
         def write(self, certobj):
             """Write the certificate to the local svn repository"""
@@ -206,17 +223,24 @@ class StoreHandler(object):
             with nested(self.lock, tempfile.NamedTemporaryFile(
                     dir=os.path.dirname(certfile),
                     delete=False)) as (locked, f_crt):
-                self.client.update(self.storedir)
-                f_crt.write(
-                    crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
-
-            os.rename(f_crt.name, certfile)
+                try:
+                    self.client.update(self.storedir)
+                    f_crt.write(
+                        crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+                except (IOError, pysvn.ClientError), e:
+                    raise StoreError(e)
 
             try:
-                with self.lock:
+                os.rename(f_crt.name, certfile)
+            except OSError, e:
+                raise StoreError(e)
+
+            with self.lock:
+                try:
                     self.client.add(certfile)
-            except pysvn.ClientError, e:
-                log.warn("Failed to add %s to repos: %s", certfile, e)
+                except pysvn.ClientError, e:
+                    log.warn("Failed to add %s to repos: %s", certfile, e)
+                    raise StoreError(e)
 
 
 class ExpiryNotifyHandler(object):
@@ -305,8 +329,12 @@ class MsgHandlerThread(threading.Thread):
                 os.rename(f_crt.name, cert_file(CN))
 
                 log.info("Storing Signed Cert")
-                self.store.write(certobj)
-                self.store.checkpoint()
+                try:
+                    self.store.write(certobj)
+                    self.store.checkpoint()
+                except StoreError, e:
+                    log.error("Error storing signed cert: %s", e)
+
                 return
 
         #Just save the CSR for later signing
@@ -329,7 +357,10 @@ class CertExpiry(object):
 
     def expiry_timer(self):
 
-        self.store.fetch()
+        try:
+            self.store.fetch()
+        except StoreError, e:
+            log.warn("Error fetching store: %s", e)
         crtpath = "%s/%s.%s" % (config.get('global', 'StoreDir'),
                              config.get('cert', 'CN'), "crt")
 
@@ -381,7 +412,10 @@ class CertExpiry(object):
         make_certs(caoverwrite)
 
         #Update the local cert store
-        self.store.fetch()
+        try:
+            self.store.fetch()
+        except StoreError, e:
+            log.warn("Error fetching store: %s", e)
 
         self.expiry_timer()
 
@@ -401,7 +435,10 @@ class Polling(object):
 
     def poll_action(self):
         log.debug("Poll: calling store.fetch")
-        self.store.fetch()
+        try:
+            self.store.fetch()
+        except StoreError, e:
+            log.warn("Error fetching store: %s", e)
         self.poll_timer()
 
 
@@ -749,7 +786,10 @@ def process_csr():
     csrpath = config.get('global', 'CSRCache')
 
     store = StoreHandler.dispatch(config.get('global', 'StoreType'))
-    store.setup()
+    try:
+        store.setup()
+    except StoreError, e:
+        log.error("Error setting up store: %s", e)
 
     for csr_file in os.listdir(csrpath):
         log.info("Processing file %s:", csr_file)
@@ -788,7 +828,10 @@ def process_csr():
             os.remove(os.path.join(csrpath, file))
 
             log.info("Storing Signed Cert")
-            store.write(certobj)
+            try:
+                store.write(certobj)
+            except StoreError, e:
+                log.error("Error writing to store: %s", e)
 
         elif dosign == "d":
             log.info("Deleting CSR file: %s", csr_file)
@@ -796,7 +839,10 @@ def process_csr():
         else:
             log.info("Skipping CSR file: %s", csr_file)
 
-        store.checkpoint()
+        try:
+            store.checkpoint()
+        except StoreError, e:
+            log.warn("Error checkpointing store: %s", e)
 
 
 def send_csr(localfile=None):
