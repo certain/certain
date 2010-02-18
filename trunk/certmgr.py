@@ -129,13 +129,14 @@ class StoreHandler(object):
 
     @classmethod
     def dispatch(cls, name):
+        cls.name = name
         return getattr(cls, name, cls.storeerror)()
 
-    @staticmethod
-    def storeerror():
+    @classmethod
+    def storeerror(cls):
         """Error method - default for getattr to deal with unknown StoreType"""
 
-        log.warn("Unknown StoreType")
+        log.warn("Unknown StoreType: " + cls.name)
 
     class none(StoreBase):
         """'Empty' none StoreHandler plugin"""
@@ -243,13 +244,14 @@ class ExpiryNotifyHandler(object):
 
     @classmethod
     def dispatch(cls, name, certobj):
+        cls.name = name
         return getattr(cls, name, cls.notifyerror)(certobj)
 
-    @staticmethod
-    def notifyerror(certobj):
+    @classmethod
+    def notifyerror(cls, certobj):
         """Error method - default to deal with unknown Notify types"""
 
-        log.warn("Unknown Notification Type")
+        log.warn("Unknown notification type: " + cls.name)
 
     @staticmethod
     def log(certobj):
