@@ -217,7 +217,6 @@ class StoreHandler(object):
                     self.client.add(certfile)
             except pysvn.ClientError, e:
                 log.warn("Failed to add %s to repos: %s", certfile, e)
-                pass
 
 
 class ExpiryNotifyHandler(object):
@@ -734,7 +733,7 @@ def check_status():
 
 
 def process_csr():
-    """Process received CSR files (human intervention"""
+    """Process received CSR files (human intervention)"""
 
     if not config.getboolean('global', 'IsMaster'):
         log.error("Not running as a Certificate Master")
@@ -835,7 +834,6 @@ def launch_daemon():
         polling.poll_timer()
     except ConfigParser.Error:
         log.warn("PollTimer value not set in config")
-        pass
 
     if config.get('global', 'IsMaster'):
         #Listen for incoming messages
