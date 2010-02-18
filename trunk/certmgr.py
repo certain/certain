@@ -20,6 +20,7 @@ import pysvn
 import abc
 import smtplib
 from email.mime.text import MIMEText
+from functools import wraps
 
 __all__ = ['StoreHandler',
            'check_status',
@@ -44,6 +45,24 @@ __all__ = ['StoreHandler',
            'make_key',
            'make_csr',
            'check_expiry']
+
+
+def logexception(func):
+    """Redirect any unexpected tracebacks.
+
+    It is desired that unhandled exceptions in threads save the exception and
+    destroy the thread. Wrap the run method of a subclass of threading.Thread
+    to obtain this behaviour.
+
+    """
+
+    @wraps(func)
+    def run(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except:
+            log.exception("Exception caught in thread")
+    return run
 
 
 class HostVerifyError(Exception):
@@ -271,6 +290,7 @@ class MsgHandlerThread(threading.Thread):
         self.cakey = cakey
         self.cacert = cacert
 
+    @logexception
     def run(self):
         csr = crypto.load_certificate_request(
             crypto.FILETYPE_PEM, self.msg)
@@ -368,6 +388,7 @@ class CertExpiry(object):
             self.tca.daemon = True
             self.tca.start()
 
+    @logexception
     def expiry_action(self, cert, caoverwrite=False, notify=False):
         """Launched when expired cert timer completes"""
 
@@ -399,6 +420,7 @@ class Polling(object):
             self.timer.daemon = True
             self.timer.start()
 
+    @logexception
     def poll_action(self):
         log.debug("Poll: calling store.fetch")
         self.store.fetch()
