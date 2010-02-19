@@ -61,7 +61,7 @@ def logexception(func):
         try:
             return func(*args, **kwargs)
         except:
-            log.exception("Exception caught in thread")
+            log.exception("Exception caught in thread " + threading.current_thread().name)
     return run
 
 
@@ -276,9 +276,7 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
         msg['Subject'] = "CA Expiry Warning"
 
         smtp = smtplib.SMTP(config.get('email', 'SMTPServer'))
-        smtp.sendmail(msg['From'],
-                      msg['To'],
-                      msg.as_string())
+        smtp.sendmail(msg['From'], msg['To'], msg.as_string())
 
 
 class MsgHandlerThread(threading.Thread):
@@ -369,6 +367,7 @@ class CertExpiry(object):
                     crttimerlength)
             self.tcrt = threading.Timer(crttimerlength,
                                         self.expiry_action, [crt])
+            self.tcrt.name = "Cert expiry timer"
             self.tcrt.daemon = True
             self.tcrt.start()
 
@@ -380,11 +379,11 @@ class CertExpiry(object):
                 catimerlength = config.getint('global', 'NotifyFrequency')
                 log.debug("Resetting CA timer wait to %d seconds",
                     catimerlength)
-            self.tca = threading.Timer(catimerlength,
-                                       self.expiry_action,
+            self.tca = threading.Timer(catimerlength, self.expiry_action,
                                        [self.cacert],
                                        {'caoverwrite': True,
                                         'notify': True})
+            self.tca.name = "CA expiry timer"
             self.tca.daemon = True
             self.tca.start()
 
@@ -873,6 +872,7 @@ def launch_daemon():
                 continue
             msg, src = s.recvfrom(65535)
             thread = MsgHandlerThread(store, msg, src, cakey, cacert)
+            thread.name = 'MsgHandlerThread(src="%s)"' % str(src)
             thread.start()
 
 
