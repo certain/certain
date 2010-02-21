@@ -52,7 +52,23 @@ def main():
         certmgr.send_csr(options.file)
 
     if options.sign:
-        certmgr.process_csr()
+        with certmgr.StoreHandler.dispatch(
+                certmgr.config.get('global', 'StoreType')) as store:
+            for csr in certmgr.pending_csrs():
+                if not csr.csr:
+                    dosign = raw_input(
+                            "%s is not a CSR. Delete? [N/d]" % csr.csr_file
+                        ).strip().lower()
+                else:
+                    dosign = raw_input(
+                            "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
+                                csr.csr_file,
+                                csr.csr.get_subject().CN)
+                        ).strip().lower()
+                if csr.csr and dosign == 'y':
+                    csr.store(store)
+                elif dosign == 'd':
+                    csr.remove()
 
     if options.check:
         certmgr.check_status()

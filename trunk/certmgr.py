@@ -756,71 +756,85 @@ def check_status():
         sys.exit(2)
 
 
-def process_csr():
-    """Process received CSR files (human intervention)"""
+class CSRChoice(object):
+    """Representation of a CSR in the pending queue.
 
-    if not config.getboolean('global', 'IsMaster'):
-        log.error("Not running as a Certificate Master")
-        sys.exit(2)
+    csr is initialised by pending_csrs. If the file is not a CSR, None is
+    passed, and the only method which may be called on CSRChoice is remove.
 
-    cakey = cacert = None
-    try:
-        cakey, cacert = check_cacerts()
-    except CACertError:
-        log.error("Can't sign CSR without CA Certs")
-        sys.exit(2)
+    """
 
-    csrpath = config.get('global', 'CSRCache')
+    def __init__(self, csr, csr_file):
+        self.csr = csr
+        self.csr_file = csr_file
 
-    store = StoreHandler.dispatch(config.get('global', 'StoreType'))
-    store.setup()
+    def store(self, cakey=None, cacert=None, store=None):
+        """Sign and store the CSR.
 
-    for csr_file in os.listdir(csrpath):
-        log.info("Processing file %s:", csr_file)
-        with open(os.path.join(csrpath, csr_file)) as f:
-            csr = crypto.load_certificate_request(
-                crypto.FILETYPE_PEM, f.read())
+        If HostVerify is set iin the config file, raise HostVerifyError.
+        If cakey or cacert are not given, try to get them. This may raise
+        CACertError.
+        If store is not given, try to get it. If this fails it will ONLY LOG A
+        WARNING. Otherwise, the default store (given in the config file) will
+        be setup, written to and checkpointed. Any of these steps may raise an
+        exception.
 
-        if csr.get_subject().CN != os.path.splitext(csr_file)[0]:
+        """
+
+        if self.csr.get_subject().CN != os.path.splitext(self.csr_file)[0]:
             if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
             else:
-                log.warn("Hostname doesn't match CN - continuing anyway")
+                log.warn("Hostname doesn't match CN - signing anyway")
 
-        dosign = raw_input(
-            "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
-                csr_file, csr.get_subject().CN)).strip().lower()
+        if cakey is None or cacert is None:
+            cakey, cacert = check_cacerts()
+        certobj = sign_csr(cakey, cacert, self.csr,
+                                config.getint('cert', 'CertLifetime'))
 
-        if dosign == "y":
-            log.info("Signing certificate")
-
-            certobj = sign_csr(cakey, cacert, csr,
-                                    config.getint('cert', 'CertLifetime'))
-
-            with tempfile.NamedTemporaryFile(
-                dir=os.path.dirname(cert_file(csr.get_subject().CN)),
+        with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(cert_file(self.csr.get_subject().CN)),
                 delete=False) as f_crt:
-                log.info("Writing certificate: %s",
-                         cert_file(csr.get_subject().CN))
-                f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
-                                                certobj))
+            log.info("Writing certificate: %s",
+                     cert_file(self.csr.get_subject().CN))
+            f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
+                                            certobj))
 
-            os.rename(f_crt.name, cert_file(csr.get_subject().CN))
+        os.rename(f_crt.name, cert_file(self.csr.get_subject().CN))
 
-            log.info("Deleting CSR file: %s", file)
-            os.remove(os.path.join(csrpath, file))
+        self.remove()
 
-            log.info("Storing Signed Cert")
+        log.info("Storing signed cert")
+        # If we are passed a store, assume it has been setup.
+        if store:
             store.write(certobj)
-
-        elif dosign == "d":
-            log.info("Deleting CSR file: %s", csr_file)
-            os.remove(os.path.join(csrpath, csr_file))
         else:
-            log.info("Skipping CSR file: %s", csr_file)
+            with StoreHandler.dispatch(
+                    config.get('global', 'StoreType')) as store:
+                store.write(certobj)
 
-        store.checkpoint()
+    def remove(self):
+        """Delete the CSR file from the queue."""
+
+        log.info("Deleting CSR file: %s", self.csr_file)
+        os.remove(self.csr_file)
+
+
+def pending_csrs():
+    """An interface to the set of pending CSRs."""
+
+    csrpath = config.get('global', 'CSRCache')
+    for csr_file in os.listdir(csrpath):
+        try:
+            with open(os.path.join(csrpath, csr_file)) as f:
+                csr = crypto.load_certificate_request(
+                    crypto.FILETYPE_PEM, f.read())
+        except crypto.Error, e:
+            # If we can't read a CSR, there's probably extra crud in the cache.
+            # Yield it anyway, the UI might still want to delete it.
+            csr = None
+        yield CSRChoice(csr, os.path.join(csrpath, csr_file))
 
 
 def send_csr(localfile=None):
