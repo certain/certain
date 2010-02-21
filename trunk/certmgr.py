@@ -61,7 +61,8 @@ def logexception(func):
         try:
             return func(*args, **kwargs)
         except:
-            log.exception("Exception caught in thread " + threading.current_thread().name)
+            log.exception("Exception caught in thread %s"
+                threading.current_thread().name)
     return run
 
 
@@ -153,8 +154,19 @@ class StoreHandler(object):
         def write(self, certobj):
             pass
 
+        def __str__(self):
+            return "StoreHandler.none()"
+
     class webdav(StoreBase):
         """Webdav StoreHandler plugin"""
+
+        def __init__(self):
+            self.url = urlparse(config.get('global', 'StoreUrl'))
+
+            if self.url.scheme == "https":
+                self.web = httplib.HTTPSConnection(self.url.netloc)
+            else:
+                self.web = httplib.HTTPConnection(self.url.netloc)
 
         def setup(self):
             pass
@@ -168,23 +180,16 @@ class StoreHandler(object):
         def write(self, certobj):
             """Puts certificate on a webdav server"""
 
-            url = urlparse(config.get('global', 'StoreUrl'))
             certfile = "%s/%s.crt" % (url.path, certobj.get_subject().CN)
-
-            log.debug("Writing cert: %s to server: %s", certfile, url)
-
-            if url.scheme == "https":
-                web = httplib.HTTPSConnection(url.netloc)
-            else:
-                web = httplib.HTTPConnection(url.netloc)
-
-            web.request('PUT', certfile,
-                        (crypto.dump_certificate(
-                            crypto.FILETYPE_PEM, certobj)))
+            log.debug("Writing cert: %s to server: %s", certfile, self.web)
+            web.request('PUT', certfile, crypto.dump_certificate(
+                                        crypto.FILETYPE_PEM, certobj))
             resp = web.getresponse()
             if not 200 <= resp.status < 300:
-                log.error("Error writing to webdav server: %s", resp.status)
-                return
+                raise Exception("Error writing to webdav server: %d" % resp.status)
+
+        def __str__(self):
+            return "StoreHandler.webdav()"
 
     class svn(StoreBase):
         """Subversion StoreHandler plugin"""
@@ -194,12 +199,12 @@ class StoreHandler(object):
             self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
                 True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
             self.lock = threading.Lock()
+            self.storedir = config.get('global', 'StoreDir')
 
         def setup(self):
             """Perform an svn checkout"""
 
             log.debug("Setting up svn repository (co)")
-            self.storedir = config.get('global', 'StoreDir')
             with self.lock:
                 self.client.checkout(config.get('global', 'StoreUrl'),
                                     self.storedir)
@@ -218,7 +223,7 @@ class StoreHandler(object):
                 self.client.update(self.storedir)
 
         def write(self, certobj):
-            """Write the certificate to the local svn repository"""
+            """Write the certificate to the local svn working copy"""
 
             certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
@@ -237,6 +242,9 @@ class StoreHandler(object):
                     self.client.add(certfile)
             except pysvn.ClientError, e:
                 log.warn("Failed to add %s to repos: %s", certfile, e)
+
+        def __str__(self):
+            return "StoreHandler.svn()"
 
 
 class ExpiryNotifyHandler(object):
@@ -316,8 +324,8 @@ class MsgHandlerThread(threading.Thread):
 
             else:
                 with tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(cert_file(CN)),
-                    delete=False) as f_crt:
+                        dir=os.path.dirname(cert_file(CN)),
+                        delete=False) as f_crt:
                     log.info("Writing certificate: %s", cert_file(CN))
                     f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
                                                         certobj))
@@ -331,13 +339,15 @@ class MsgHandlerThread(threading.Thread):
 
         #Just save the CSR for later signing
         with tempfile.NamedTemporaryFile(
-            dir=os.path.dirname(csr_cache_file(self.src)),
-            delete=False) as f_csr:
+                dir=os.path.dirname(csr_cache_file(self.src)),
+                delete=False) as f_csr:
             log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
             f_csr.write(self.msg)
 
             os.rename(f_csr.name, csr_cache_file(self.src))
 
+    def __str__(self):
+        return 'MsgHandlerThread(src=%r)' % self.src
 
 class CertExpiry(object):
     """Timer threads to watch for certificate expiry"""
@@ -406,6 +416,8 @@ class CertExpiry(object):
         finally:
             self.expiry_timer()
 
+    def __str__(self):
+        return 'CertExpiry(store=%r)' % self.store
 
 class Polling(object):
 
@@ -427,6 +439,9 @@ class Polling(object):
             self.store.fetch()
         finally:
             self.poll_timer()
+
+    def __str__(self):
+        return 'Polling(store=%r, polltime=%r)' % (self.store, self.polltime)
 
 
 def ca_cert_file():
@@ -628,7 +643,8 @@ def make_certs(caoverwrite=False):
         if caoverwrite:
             #We want to overwrite the CA
             with tempfile.NamedTemporaryFile(
-                dir=os.path.dirname(ca_cert_file()), delete=False) as f_cacert:
+                    dir=os.path.dirname(ca_cert_file()),
+                    delete=False) as f_cacert:
                 cacert = make_ca(key, CN,
                                       config.get('ca', 'OU'),
                                       config.get('ca', 'O'),
@@ -673,7 +689,7 @@ def make_certs(caoverwrite=False):
         key = key_from_file(key_file(CN))
 
     with tempfile.NamedTemporaryFile(
-        dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
+            dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
         csr = make_csr(key, CN,
                             config.get('cert', 'OU'),
                             config.get('cert', 'O'),
@@ -886,7 +902,7 @@ def launch_daemon():
                 continue
             msg, src = s.recvfrom(65535)
             thread = MsgHandlerThread(store, msg, src, cakey, cacert)
-            thread.name = 'MsgHandlerThread(src="%s)"' % str(src)
+            thread.name = 'MsgHandlerThread(src=%r)' % src
             thread.start()
 
 
