@@ -64,7 +64,8 @@ def main():
                     dosign = raw_input(
                             "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
                                 csr.csr_file,
-                                csr.csr.get_subject().CN)).strip().lower()
+                                csr.csr.get_subject().CN)
+                        ).strip().lower()
                 if csr.csr and dosign == 'y':
                     csr.store(store)
                 elif dosign == 'd':
