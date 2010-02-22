@@ -42,11 +42,7 @@ def main():
         certmgr.make_certs()
 
     if options.daemon:
-        if certmgr.config.getboolean('global', 'IsMaster'):
-            certmgr.launch_daemon()
-        else:
-            log.error("IsMaster not set in configuration file!")
-            sys.exit(2)
+        certmgr.launch_daemon()
 
     if options.send:
         certmgr.send_csr(options.file)
