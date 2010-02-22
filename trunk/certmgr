@@ -42,8 +42,6 @@ def main():
 
     if options.config_file:
         certmgr.parse_config(options.config_file)
-    else:
-        certmgr.parse_config('/etc/certmgr/certmgr.cfg')
 
     if options.makecerts:
         certmgr.make_certs()
@@ -60,8 +58,8 @@ def main():
             for csr in certmgr.pending_csrs():
                 if not csr.csr:
                     dosign = raw_input(
-                            "%s is not a CSR. \
-                            Delete? [N/d]" % csr.csr_file).strip().lower()
+                            "%s is not a CSR. Delete? [N/d]" % csr.csr_file
+                        ).strip().lower()
                 else:
                     dosign = raw_input(
                             "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
