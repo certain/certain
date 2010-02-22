@@ -5,13 +5,15 @@
 import certmgr
 from optparse import OptionParser
 
-certmgr.parse_config('/etc/certmgr/certmgr.cfg')
-
 
 def main():
     certmgr.check_paths()
 
     parser = OptionParser()
+    parser.add_option("-o", "--config",
+                      dest="config_file",
+                      help="Specifies the config file to use \
+                      if unset, defaults to /etc/certmgr/certmgr.cfg")
     parser.add_option("-m", "--makecerts",
                       action="store_true", dest="makecerts",
                       help="Setup certificates on your system.")
@@ -38,6 +40,11 @@ def main():
     parser.set_defaults(makecerts=False, daemon=False, send=False)
     (options, args) = parser.parse_args()
 
+    if options.config_file:
+        certmgr.parse_config(options.config_file)
+    else:
+        certmgr.parse_config('/etc/certmgr/certmgr.cfg')
+
     if options.makecerts:
         certmgr.make_certs()
 
@@ -53,14 +60,13 @@ def main():
             for csr in certmgr.pending_csrs():
                 if not csr.csr:
                     dosign = raw_input(
-                            "%s is not a CSR. Delete? [N/d]" % csr.csr_file
-                        ).strip().lower()
+                            "%s is not a CSR. \
+                            Delete? [N/d]" % csr.csr_file).strip().lower()
                 else:
                     dosign = raw_input(
                             "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
                                 csr.csr_file,
-                                csr.csr.get_subject().CN)
-                        ).strip().lower()
+                                csr.csr.get_subject().CN)).strip().lower()
                 if csr.csr and dosign == 'y':
                     csr.store(store)
                 elif dosign == 'd':
