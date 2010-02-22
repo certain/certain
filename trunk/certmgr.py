@@ -24,7 +24,7 @@ from functools import wraps
 
 __all__ = ['StoreHandler',
            'check_status',
-           'process_csr',
+           'pending_csrs',
            'sign_csr',
            'send_csr',
            'make_certs',
@@ -61,7 +61,7 @@ def logexception(func):
         try:
             return func(*args, **kwargs)
         except:
-            log.exception("Exception caught in thread %s"
+            log.exception("Exception caught in thread %s",
                 threading.current_thread().name)
     return run
 
@@ -186,7 +186,8 @@ class StoreHandler(object):
                                         crypto.FILETYPE_PEM, certobj))
             resp = web.getresponse()
             if not 200 <= resp.status < 300:
-                raise Exception("Error writing to webdav server: %d" % resp.status)
+                raise Exception(
+                    "Error writing to webdav server: %d" % resp.status)
 
         def __str__(self):
             return "StoreHandler.webdav()"
@@ -349,6 +350,7 @@ class MsgHandlerThread(threading.Thread):
     def __str__(self):
         return 'MsgHandlerThread(src=%r)' % self.src
 
+
 class CertExpiry(object):
     """Timer threads to watch for certificate expiry"""
 
@@ -361,25 +363,28 @@ class CertExpiry(object):
         crtpath = "%s/%s.crt" % (config.get('global', 'StoreDir'),
                              config.get('cert', 'CN'))
 
+        crttimerlength = 0
+        crt = None
         try:
             crt = cert_from_file(crtpath)
-        except crypto.Error:
-            log.warn("Certificate missing. Call --makecerts.")
-        else:
             crttimerlength = check_expiry(crt) - config.getint(
                 'cert', 'ExpiryDeadline')
             log.debug("Cert expiry timer waiting for %d seconds",
                 crttimerlength)
+        except (crypto.Error, IOError), e:
+            log.warn("Certificate missing %s", e)
+            make_certs()
 
-            if crttimerlength <= config.getint('global', 'NotifyFrequency'):
-                crttimerlength = config.getint('global', 'NotifyFrequency')
-                log.debug("Resetting cert timer wait to %d seconds",
-                    crttimerlength)
-            self.tcrt = threading.Timer(crttimerlength,
-                                        self.expiry_action, [crt])
-            self.tcrt.name = "Cert expiry timer"
-            self.tcrt.daemon = True
-            self.tcrt.start()
+        if crttimerlength <= config.getint('global', 'NotifyFrequency'):
+            crttimerlength = config.getint('global', 'NotifyFrequency')
+            log.debug("Resetting cert timer wait to %d seconds",
+                      crttimerlength)
+
+        self.tcrt = threading.Timer(crttimerlength,
+                                    self.expiry_action, [crt])
+        self.tcrt.name = "Cert expiry timer"
+        self.tcrt.daemon = True
+        self.tcrt.start()
 
         if self.cacert is not None:
             catimerlength = check_expiry(self.cacert) - config.getint(
@@ -418,6 +423,7 @@ class CertExpiry(object):
 
     def __str__(self):
         return 'CertExpiry(store=%r)' % self.store
+
 
 class Polling(object):
 
@@ -689,13 +695,13 @@ def make_certs(caoverwrite=False):
         key = key_from_file(key_file(CN))
 
     with tempfile.NamedTemporaryFile(
-            dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
+        dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
         csr = make_csr(key, CN,
-                            config.get('cert', 'OU'),
-                            config.get('cert', 'O'),
-                            config.get('cert', 'L'),
-                            config.get('cert', 'ST'),
-                            config.get('cert', 'C'))
+                       config.get('cert', 'OU'),
+                       config.get('cert', 'O'),
+                       config.get('cert', 'L'),
+                       config.get('cert', 'ST'),
+                       config.get('cert', 'C'))
         f_csr.write(
             crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr))
 
@@ -902,7 +908,7 @@ def launch_daemon():
                 continue
             msg, src = s.recvfrom(65535)
             thread = MsgHandlerThread(store, msg, src, cakey, cacert)
-            thread.name = 'MsgHandlerThread(src=%r)' % src
+            thread.name = 'MsgHandlerThread(src=%r)' % (src, )
             thread.start()
 
 
