@@ -9,7 +9,7 @@ import select
 import ConfigParser
 import threading
 import os
-from OpenSSL import crypto
+from M2Crypto import m2, RSA, X509, EVP, ASN1
 import httplib
 from urlparse import urlparse
 import logging
@@ -21,6 +21,8 @@ import abc
 import smtplib
 from email.mime.text import MIMEText
 from functools import wraps
+from collections import namedtuple
+
 
 __all__ = ['StoreHandler',
            'check_status',
@@ -180,11 +182,10 @@ class StoreHandler(object):
         def write(self, certobj):
             """Puts certificate on a webdav server"""
 
-            certfile = "%s/%s.crt" % (url.path, certobj.get_subject().CN)
+            certfile = "%s/%s.crt" % (self.url.path, certobj.get_subject().CN)
             log.debug("Writing cert: %s to server: %s", certfile, self.web)
-            web.request('PUT', certfile, crypto.dump_certificate(
-                                        crypto.FILETYPE_PEM, certobj))
-            resp = web.getresponse()
+            self.web.request('PUT', certfile, certobj.as_pem())
+            resp = self.web.getresponse()
             if not 200 <= resp.status < 300:
                 raise Exception(
                     "Error writing to webdav server: %d" % resp.status)
@@ -233,8 +234,7 @@ class StoreHandler(object):
                     dir=os.path.dirname(certfile),
                     delete=False)) as (locked, f_crt):
                 self.client.update(self.storedir)
-                f_crt.write(
-                    crypto.dump_certificate(crypto.FILETYPE_PEM, certobj))
+                f_crt.write(certobj.as_pem())
 
             os.rename(f_crt.name, certfile)
 
@@ -278,9 +278,13 @@ class ExpiryNotifyHandler(object):
 """CA Expiry Warning\n\n
 CA %s expires at: %s\n
 Please update your CA certificate!""" % (certobj.get_subject().CN,
-                time.ctime(float(certobj.get_notAfter()[0:14]))))
+                                         time.asctime(
+                                             time.strptime(
+                                                 str(
+                                                     certobj.get_not_after()),
+                                                     '%b %d %H:%M:%S %Y %Z'))))
 
-        msg['To'] = config.get('email', 'ToAddress')
+        msg['To'] = config.get('ca', 'Email')
         msg['From'] = config.get('email', 'FromAddress')
         msg['Subject'] = "CA Expiry Warning"
 
@@ -301,8 +305,7 @@ class MsgHandlerThread(threading.Thread):
 
     @logexception
     def run(self):
-        csr = crypto.load_certificate_request(
-            crypto.FILETYPE_PEM, self.msg)
+        csr = X509.load_request_string(self.msg)
         CN = csr.get_subject().CN
 
         if CN != self.src:
@@ -319,7 +322,7 @@ class MsgHandlerThread(threading.Thread):
             try:
                 certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
-            except crypto.Error, e:
+            except X509.X509Error, e:
                 log.warn("Signing failed. Will save for later signing.")
                 log.warn(str(e))
 
@@ -328,8 +331,7 @@ class MsgHandlerThread(threading.Thread):
                         dir=os.path.dirname(cert_file(CN)),
                         delete=False) as f_crt:
                     log.info("Writing certificate: %s", cert_file(CN))
-                    f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
-                                                        certobj))
+                    f_crt.write(certobj.as_pem())
 
                 os.rename(f_crt.name, cert_file(CN))
 
@@ -371,7 +373,7 @@ class CertExpiry(object):
                 'cert', 'ExpiryDeadline')
             log.debug("Cert expiry timer waiting for %d seconds",
                 crttimerlength)
-        except (crypto.Error, IOError), e:
+        except (X509.X509Error, IOError), e:
             log.warn("Certificate missing %s", e)
             make_certs()
 
@@ -450,6 +452,35 @@ class Polling(object):
         return 'Polling(store=%r, polltime=%r)' % (self.store, self.polltime)
 
 
+def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
+    """Returns an X509_Name object populated with appropriate values.
+
+    Note! Subject fields are hierarchical.  (hierarchy reads L->R in kwargs)
+    If CN is not set, all fields  other fields will be ignored,
+    If OU is unset, O, L, ST, C are ignored...
+
+    """
+
+    #Email needs to be specified in two subject fields
+    emailAddress = Email
+
+    localvars = vars()
+
+    info = X509.X509_Name(m2.x509_name_new())
+
+    Subject = namedtuple('Subject', 'emailAddress Email CN OU O L ST C')
+    subject = Subject(**localvars)
+
+    for name in subject._fields:
+        value = getattr(subject, name)
+        log.debug("NAME: %s, VAL: %s", name, value)
+
+        info.add_entry_by_txt(field=name, entry=value, type=0x1000,
+                              len=-1, loc=-1, set=0)
+
+    return info
+
+
 def ca_cert_file():
     """Return full path of CA cert file from config"""
 
@@ -469,23 +500,21 @@ def make_key(bits=2048):
 
     bits: Bits for RSA key (defaults to 2048)
 
-    Returns the Pkey object
+    Returns an RSA object
 
     """
 
-    key = crypto.PKey()
-    key.generate_key(crypto.TYPE_RSA, bits)
-
-    return key
+    return RSA.gen_key(bits, m2.RSA_F4)
 
 
-def make_csr(key, CN,
+def make_csr(key, CN, Email="certmgr@certmgr",
              OU="CertMgr Dept", O="CertMgr Org",
              L="CertMgr City", ST="CertMgr State", C="UK"):
     """Make a certificate request from an RSA key
 
     key: String containing key
     CN: Common Name (aka CA hostname)
+    Email: Email address of certificate owner
     OU: Organisational Unit (CertMgr Dept)
     O: Organisation (CertMgr Org)
     L: Location (CertMgr City)
@@ -496,17 +525,15 @@ def make_csr(key, CN,
 
     """
 
-    csr = crypto.X509Req()
-    name = csr.get_subject()
-    name.C = C
-    name.ST = ST
-    name.L = L
-    name.O = O
-    name.OU = OU
-    name.CN = CN
+    csr = X509.Request()
 
-    csr.set_pubkey(key)
-    csr.sign(key, 'md5')
+    csr.set_subject_name(crt_subject(CN, Email, OU, O, L, ST, C))
+
+    pub = EVP.PKey(md='md5')
+    pub.assign_rsa(key, capture=False)
+
+    csr.set_pubkey(pub)
+    csr.sign(pub, md='md5')
 
     return csr
 
@@ -523,24 +550,49 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     """
 
-    cert = crypto.X509()
-    cert.set_pubkey(csr.get_pubkey())
-    cert.set_subject(csr.get_subject())
-    ##FIXME## Serial numbers should increment!
-    cert.set_serial_number(1)
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(lifetime)
-    cert.set_issuer(cacert.get_subject())
-    cert.sign(cakey, 'md5')
+    capub = cacert.get_pubkey()
+    capub.assign_rsa(cakey, capture=False)
+
+    pub = csr.get_pubkey()
+    cert = X509.X509()
+
+    cert.set_pubkey(pub)
+
+    cert.set_version(0)
+
+    now = int(time.time())
+
+    notbefore = ASN1.ASN1_UTCTIME()
+    notbefore.set_time(now)
+
+    notafter = ASN1.ASN1_UTCTIME()
+    notafter.set_time(now + lifetime)
+
+    cert.set_not_before(notbefore)
+    cert.set_not_after(notafter)
+
+    #Assign subject from csr
+    subject = csr.get_subject()
+    cert.set_subject_name(subject)
+    ###FIXME (should be something thread-safe)
+    cert.set_serial_number(int(time.time()))
+
+    #Set issuer on cert
+    cert.set_issuer_name(cacert.get_subject())
+
+    #print cert.as_text()
+    cert.sign(capub, md='md5')
 
     return cert
 
 
-def make_ca(key, CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
+def make_ca(key, CN, Email="CA@CertMgr",
+            OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
     """Generate a certificate authority
 
     CN: Common Name
+    Email: Email address of certificate owner
     OU: Organisational Unit (CertMgr Dept)
     O: Organisation (CertMgr Org)
     L: Location (CertMgr City)
@@ -548,35 +600,65 @@ def make_ca(key, CN, OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
     C: Country (UK)
     lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
 
+    Returns an X509 cert object
+
     """
 
-    csr = make_csr(key, CN, OU, O, L, ST, C)
+    pub = EVP.PKey(md='md5')
+    pub.assign_rsa(key, capture=False)
+    cacert = X509.X509()
+    cacert.set_pubkey(pub)
+    cacert.set_subject_name(crt_subject(CN, Email, OU, O, L, ST, C))
 
-    cacert = crypto.X509()
-    cacert.set_issuer(csr.get_subject())
-    cacert.set_subject(csr.get_subject())
-    cacert.set_pubkey(csr.get_pubkey())
+    now = int(time.time())
+    notbefore = ASN1.ASN1_UTCTIME()
+    notbefore.set_time(now)
 
-    cacert.set_serial_number(0)
-    cacert.gmtime_adj_notBefore(0)
-    cacert.gmtime_adj_notAfter(lifetime)
-    cacert.sign(key, 'md5')
+    notafter = ASN1.ASN1_UTCTIME()
+    notafter.set_time(now + lifetime)
+
+    cacert.set_not_before(notbefore)
+    cacert.set_not_after(notafter)
+
+    cacert.set_serial_number = 1
+
+    #Self-signed, so issuer derived from the cert itself
+    cacert.set_issuer_name(cacert.get_subject())
+
+    #Set CA:TRUE extension on cert (is a CA)
+    ext = X509.new_extension("basicConstraints", "CA:TRUE")
+    ext.set_critical()
+    cacert.add_ext(ext)
+
+    #Sign the cert
+    cacert.sign(pub, md='md5')
 
     return cacert
 
 
 def key_from_file(keyfilename):
-    """Read a private key from file"""
+    """Read a private key from file
 
-    with open(keyfilename) as f:
-        return crypto.load_privatekey(crypto.FILETYPE_PEM, f.read())
+    Note: M2Crypto provides no way to not set a passphrase on keys
+    By default, Certmgr uses the passphrase 'certmgr' throughout
+
+    Returns an RSA object
+
+    """
+
+    return RSA.load_key(keyfilename, callback=lambda passphrase: 'certmgr')
 
 
 def cert_from_file(certfilename):
     """Read a certificate from file"""
 
-    with open(certfilename) as f:
-        return crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
+    return X509.load_cert(certfilename)
+
+
+def csr_from_file(csrfilename):
+    """Read a certificate request from file"""
+
+    return X509.load_request(csrfilename)
 
 
 def cert_file(name):
@@ -638,9 +720,10 @@ def make_certs(caoverwrite=False):
 
         #We never want to overwrite a key file,so do nothing if one exists
         try:
+            #Use the default passphrase 'certmgr' on the key
             with creat(ca_key_file(), mode=0666) as f_key:
                 key = make_key(config.getint('ca', 'Bits'))
-                f_key.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+                f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
         except OSError, e:
             if e.errno != errno.EEXIST: # File exists
                 raise
@@ -651,30 +734,28 @@ def make_certs(caoverwrite=False):
             with tempfile.NamedTemporaryFile(
                     dir=os.path.dirname(ca_cert_file()),
                     delete=False) as f_cacert:
-                cacert = make_ca(key, CN,
+                cacert = make_ca(key, CN, config.get('ca', 'Email'),
                                       config.get('ca', 'OU'),
                                       config.get('ca', 'O'),
                                       config.get('ca', 'L'),
                                       config.get('ca', 'ST'),
                                       config.get('ca', 'C'),
                                       config.getint('ca', 'CALifetime'))
-                f_cacert.write(
-                    crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+                f_cacert.write(cacert.as_pem())
 
             os.rename(f_cacert.name, ca_cert_file())
         else:
             #Only create if it doesn't already exist
             try:
                 with creat(ca_cert_file(), mode=0666) as f_cacert:
-                    cacert = make_ca(key, CN,
+                    cacert = make_ca(key, CN, config.get('ca', 'Email'),
                                           config.get('ca', 'OU'),
                                           config.get('ca', 'O'),
                                           config.get('ca', 'L'),
                                           config.get('ca', 'ST'),
                                           config.get('ca', 'C'),
                                           config.getint('ca', 'CALifetime'))
-                    f_cacert.write(
-                        crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
+                    f_cacert.write(cacert.as_pem())
             except OSError, e:
                 if e.errno != errno.EEXIST: # File exists
                     raise
@@ -686,9 +767,10 @@ def make_certs(caoverwrite=False):
 
     #We never want to overwrite a key file, so do nothing if it already exists.
     try:
+        #Use the default passphrase 'certmgr' on the key
         with creat(key_file(CN), mode=0666) as f_key:
             key = make_key(config.getint('cert', 'Bits'))
-            f_key.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+            f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
     except OSError, e:
         if e.errno != errno.EEXIST: # File exists
             raise
@@ -696,14 +778,13 @@ def make_certs(caoverwrite=False):
 
     with tempfile.NamedTemporaryFile(
         dir=os.path.dirname(csr_file(CN)), delete=False) as f_csr:
-        csr = make_csr(key, CN,
+        csr = make_csr(key, CN, config.get('cert', 'Email'),
                        config.get('cert', 'OU'),
                        config.get('cert', 'O'),
                        config.get('cert', 'L'),
                        config.get('cert', 'ST'),
                        config.get('cert', 'C'))
-        f_csr.write(
-            crypto.dump_certificate_request(crypto.FILETYPE_PEM, csr))
+        f_csr.write(csr.as_pem())
 
     os.rename(f_csr.name, csr_file(CN))
 
@@ -718,18 +799,17 @@ def check_expiry(certobj):
 
     """
 
-    return int(time.mktime(time.strptime(
-        certobj.get_notAfter()[0:14],
-        '%Y%m%d%H%M%S')) - time.time())
+    return int(
+        time.mktime(time.strptime(str(
+            certobj.get_not_after()), '%b %d %H:%M:%S %Y %Z')) - time.time())
 
 
 def check_status():
     if config.getboolean('global', 'IsMaster'):
         #Check CA certs
         try:
-            with open(ca_cert_file()) as cacertfile:
-                cacert = crypto.load_certificate(
-                    crypto.FILETYPE_PEM, cacertfile.read())
+            cacert = cert_from_file(ca_cert_file())
+        ###FIXME (what if the cert is there, but corrupt?)
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -738,7 +818,7 @@ def check_status():
         else:
             if check_expiry(cacert) < config.get('ca', 'ExpiryDeadline'):
                 log.warn("CA certificate %s expires in less than 7 days!",
-                        cacertfile)
+                        ca_cert_file())
 
         try:
             open(ca_key_file()).close()
@@ -753,9 +833,8 @@ def check_status():
     CN = config.get('cert', 'CN')
 
     try:
-        with open(cert_file(CN)) as certfile:
-            certinf = crypto.load_certificate(
-                crypto.FILETYPE_PEM, certfile.read())
+        certinf = cert_from_file(cert_file(CN))
+    ###FIXME (What if cert is there but corrupt?)
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
@@ -763,11 +842,13 @@ def check_status():
         sys.exit(2)
     else:
         #Get cert time without timezone chars
-        notafter = certinf.get_notAfter()[0:14]
+        notafter = time.mktime(time.strptime(str(certinf.get_not_after()),
+                                                '%b %d %H:%M:%S %Y %Z'))
+
         #If notafter is less than a week away...
-        if (time.mktime(time.strptime(notafter, '%Y%m%d%H%M%S'))
-            - time.time()) < 604800:
-            log.warn("Certificate %s expires in less than 7 days!", certfile)
+        if (notafter - time.time()) < 604800:
+            log.warn("Certificate %s expires in less than 7 days!",
+                     cert_file(CN))
 
     try:
         open(key_file(CN)).close()
@@ -820,8 +901,7 @@ class CSRChoice(object):
                 delete=False) as f_crt:
             log.info("Writing certificate: %s",
                      cert_file(self.csr.get_subject().CN))
-            f_crt.write(crypto.dump_certificate(crypto.FILETYPE_PEM,
-                                            certobj))
+            f_crt.write(certobj.as_pem())
 
         os.rename(f_crt.name, cert_file(self.csr.get_subject().CN))
 
@@ -848,11 +928,10 @@ def pending_csrs():
 
     csrpath = config.get('global', 'CSRCache')
     for csr_file in os.listdir(csrpath):
+        csrloc = "%s/%s" % csrpath, csr_file
         try:
-            with open(os.path.join(csrpath, csr_file)) as f:
-                csr = crypto.load_certificate_request(
-                    crypto.FILETYPE_PEM, f.read())
-        except crypto.Error, e:
+            csr_from_file(csrloc)
+        except X509.X509Error, e:
             # If we can't read a CSR, there's probably extra crud in the cache.
             # Yield it anyway, the UI might still want to delete it.
             csr = None
