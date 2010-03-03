@@ -928,9 +928,9 @@ def pending_csrs():
 
     csrpath = config.get('global', 'CSRCache')
     for csr_file in os.listdir(csrpath):
-        csrloc = "%s/%s" % csrpath, csr_file
+        csrloc = "%s/%s" % (csrpath, csr_file)
         try:
-            csr_from_file(csrloc)
+            csr = csr_from_file(csrloc)
         except X509.X509Error, e:
             # If we can't read a CSR, there's probably extra crud in the cache.
             # Yield it anyway, the UI might still want to delete it.
