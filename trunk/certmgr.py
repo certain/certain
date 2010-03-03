@@ -275,8 +275,9 @@ class ExpiryNotifyHandler(object):
 
         log.debug("Emailing about cert expiry")
         msg = MIMEText(
-"""CA Expiry Warning\n\n
-CA %s expires at: %s\n
+"""CA Expiry Warning
+
+CA %s expires at: %s
 Please update your CA certificate!""" % (certobj.get_subject().CN,
                                          time.asctime(
                                              time.strptime(
@@ -452,6 +453,54 @@ class Polling(object):
         return 'Polling(store=%r, polltime=%r)' % (self.store, self.polltime)
 
 
+class Sequence(object):
+    """Interface for producers of integer sequences."""
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractclass
+    def next(self):
+        pass
+
+
+class TimeSequence(Sequence):
+    """Provide a time-based sequence. This implementation should support one
+    million unique integers per second."""
+
+    def __init__(self):
+        super(TimeSequence, self).__init__()
+        self.lock = threading.Lock()
+        self.seq = 0
+        self.last_time = time.time()
+
+    def next(self):
+        with self.lock:
+            t = time.time()
+            if t != self.last_time:
+                self.seq = 0
+                self.last_time = t
+            else:
+                self.seq += 1
+            return int(t * 1e6) + self.seq
+
+
+class UUIDSequence(Sequence):
+    """Provide a UUID as a sequence. See the uuid1 documentation for
+    details."""
+
+    def __init__(self):
+        super(UUIDSequence, self).__init__()
+
+    def next(self):
+        return int(uuid.uuid1())
+
+
+def get_network_seq():
+    with closing(socket.socket()) as sock:
+        sock.connect((config.get('Master', 'MasterAddress'),
+                      config.get('Master', 'MasterSeqPort')))
+        return int(sock.read(128))
+
+
 def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
     """Returns an X509_Name object populated with appropriate values.
 
@@ -574,8 +623,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     #Assign subject from csr
     subject = csr.get_subject()
     cert.set_subject_name(subject)
-    ###FIXME (should be something thread-safe)
-    cert.set_serial_number(int(time.time()))
+    cert.set_serial_number(get_network_seq())
 
     #Set issuer on cert
     cert.set_issuer_name(cacert.get_subject())
@@ -976,19 +1024,28 @@ def launch_daemon():
 
     if config.get('global', 'IsMaster'):
         #Listen for incoming messages
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setblocking(0)
-        s.bind((config.get('global', 'MasterAddress'),
-                config.getint('global', 'MasterPort')))
+        udpsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udpsock.setblocking(0)
+        udpsock.bind((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterPort')))
+
+        # Listen for sequence requests
+        tcpsock = socket.socket(type=socket.SOCK_DGRAM)
+        tcpsock.setblocking(0)
+        tcpsock.bind((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterSeqPort')))
+        sequence = UUIDSequence()
 
         while True:
-            read, write, error = select.select([s], [], [])
-            if s not in read:
-                continue
-            msg, src = s.recvfrom(65535)
-            thread = MsgHandlerThread(store, msg, src, cakey, cacert)
-            thread.name = 'MsgHandlerThread(src=%r)' % (src, )
-            thread.start()
+            read, write, error = select.select([udpsock, tcpsock], [], [])
+            if udpsock in read:
+                msg, src = udpsock.recvfrom(65535)
+                thread = MsgHandlerThread(store, msg, src, cakey, cacert)
+                thread.name = 'MsgHandlerThread(src=%r)' % (src, )
+                thread.start()
+            if tcpsock in read:
+                with closing(tcpsock.accept()) as sock:
+                    sock.write(sequence.next())
 
 
 def check_cacerts():
