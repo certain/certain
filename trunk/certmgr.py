@@ -22,6 +22,7 @@ import smtplib
 from email.mime.text import MIMEText
 from functools import wraps
 from collections import namedtuple
+import uuid
 
 
 __all__ = ['StoreHandler',
@@ -279,11 +280,7 @@ class ExpiryNotifyHandler(object):
 
 CA %s expires at: %s
 Please update your CA certificate!""" % (certobj.get_subject().CN,
-                                         time.asctime(
-                                             time.strptime(
-                                                 str(
-                                                     certobj.get_not_after()),
-                                                     '%b %d %H:%M:%S %Y %Z'))))
+                                         str(certobj.get_not_after())))
 
         msg['To'] = config.get('ca', 'Email')
         msg['From'] = config.get('email', 'FromAddress')
@@ -457,7 +454,7 @@ class Sequence(object):
     """Interface for producers of integer sequences."""
     __metaclass__ = abc.ABCMeta
 
-    @abc.abstractclass
+    @abc.abstractmethod
     def next(self):
         pass
 
@@ -496,9 +493,9 @@ class UUIDSequence(Sequence):
 
 def get_network_seq():
     with closing(socket.socket()) as sock:
-        sock.connect((config.get('Master', 'MasterAddress'),
-                      config.get('Master', 'MasterSeqPort')))
-        return int(sock.read(128))
+        sock.connect((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterSeqPort')))
+        return int(sock.recv(128))
 
 
 def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
@@ -1030,10 +1027,12 @@ def launch_daemon():
                       config.getint('global', 'MasterPort')))
 
         # Listen for sequence requests
-        tcpsock = socket.socket(type=socket.SOCK_DGRAM)
+        tcpsock = socket.socket()
+        tcpsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         tcpsock.setblocking(0)
         tcpsock.bind((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterSeqPort')))
+        tcpsock.listen(5)
         sequence = UUIDSequence()
 
         while True:
@@ -1044,8 +1043,8 @@ def launch_daemon():
                 thread.name = 'MsgHandlerThread(src=%r)' % (src, )
                 thread.start()
             if tcpsock in read:
-                with closing(tcpsock.accept()) as sock:
-                    sock.write(sequence.next())
+                with closing(tcpsock.accept()[0]) as sock:
+                    sock.send(str(sequence.next()))
 
 
 def check_cacerts():
