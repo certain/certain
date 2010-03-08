@@ -293,16 +293,17 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
 class MsgHandlerThread(threading.Thread):
     """Handle incoming messages in separate threads"""
 
-    def __init__(self, store, msg, src, cakey, cacert):
+    def __init__(self, store, sock, src, cakey, cacert):
         threading.Thread.__init__(self)
         self.store = store
-        self.msg = msg
+        self.sock = sock
         self.src = socket.gethostbyaddr(src[0])[0]
         self.cakey = cakey
         self.cacert = cacert
 
     @logexception
     def run(self):
+        self.msg = sock.recv(65535)
         csr = X509.load_request_string(self.msg)
         CN = csr.get_subject().CN
 
@@ -991,9 +992,14 @@ def send_csr(localfile=None):
     log.info("Sending CSR %s for signing", sendfile)
     with nested(
             open(sendfile),
-            closing(socket.socket(type=socket.SOCK_DGRAM))) as (f_csr, sock):
-        sock.sendto(f_csr.read(), (config.get('global', 'MasterAddress'),
-                            config.getint('global', 'MasterPort')))
+            closing(socket.socket())) as (f_csr, sock):
+        sock.connect((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterPort')))
+        sock.send(f_csr.read())
+
+
+def closing0(t):
+    return closing(t[0]), t[1]
 
 
 def launch_daemon():
@@ -1021,29 +1027,31 @@ def launch_daemon():
 
     if config.get('global', 'IsMaster'):
         #Listen for incoming messages
-        udpsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        udpsock.setblocking(0)
-        udpsock.bind((config.get('global', 'MasterAddress'),
+        csrsock = socket.socket()
+        csrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        csrsock.setblocking(0)
+        csrsock.bind((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterPort')))
+        csrsock.listen(5)
 
         # Listen for sequence requests
-        tcpsock = socket.socket()
-        tcpsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        tcpsock.setblocking(0)
-        tcpsock.bind((config.get('global', 'MasterAddress'),
+        seqsock = socket.socket()
+        seqsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        seqsock.setblocking(0)
+        seqsock.bind((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterSeqPort')))
-        tcpsock.listen(5)
+        seqsock.listen(5)
         sequence = UUIDSequence()
 
         while True:
-            read, write, error = select.select([udpsock, tcpsock], [], [])
-            if udpsock in read:
-                msg, src = udpsock.recvfrom(65535)
-                thread = MsgHandlerThread(store, msg, src, cakey, cacert)
-                thread.name = 'MsgHandlerThread(src=%r)' % (src, )
-                thread.start()
+            read, write, error = select.select([csrsock, seqsock], [], [])
+            if csrsock in read:
+                with closing0(csrsock.accept()) as (sock, src):
+                    thread = MsgHandlerThread(store, sock, src, cakey, cacert)
+                    thread.name = 'MsgHandlerThread(src=%r)' % (src, )
+                    thread.start()
             if tcpsock in read:
-                with closing(tcpsock.accept()[0]) as sock:
+                with closing(seqsock.accept()[0]) as sock:
                     sock.send(str(sequence.next()))
 
 
