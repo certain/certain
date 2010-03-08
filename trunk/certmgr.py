@@ -13,7 +13,7 @@ from M2Crypto import m2, RSA, X509, EVP, ASN1
 import httplib
 from urlparse import urlparse
 import logging
-from contextlib import closing, nested
+from contextlib import closing, nested, contextmanager
 import errno
 import tempfile
 import pysvn
@@ -998,8 +998,9 @@ def send_csr(localfile=None):
         sock.send(f_csr.read())
 
 
-def closing0(t):
-    return closing(t[0]), t[1]
+@contextmanager
+def closing0(object):
+    yield closing(t[0]), t[1]
 
 
 def launch_daemon():
