@@ -354,18 +354,8 @@ class MsgHandlerThread(threading.Thread):
                 certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
             except X509.X509Error, e:
-                log.warn("Signing failed. Will save for later signing.")
-                log.warn(str(e))
+                log.exception("Signing failed. Will save for later signing.")
             else:
-                pass
-#                with tempfile.NamedTemporaryFile(
-#                        dir=os.path.dirname(cert_file(CN)),
-#                        delete=False) as f_crt:
-#                    log.info("Writing certificate: %s", cert_file(CN))
-#                    f_crt.write(certobj.as_pem())
-
-#                os.rename(f_crt.name, cert_file(CN))
-
                 log.info("Storing Signed Cert")
                 self.store.write(certobj)
                 self.store.checkpoint()
