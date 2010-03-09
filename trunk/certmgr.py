@@ -298,15 +298,8 @@ def closing_by_name(name):
     def decorate_closing(func):
         @wraps(func)
         def new(*args, **kwargs):
-            try:
+            with closing(getattr(args[0], name)):
                 return func(*args, **kwargs)
-            finally:
-                try:
-                    closeit = getattr(args[0], name).close
-                except AttributeError:
-                    pass
-                else:
-                    closeit()
         return new
     return decorate_closing
 
