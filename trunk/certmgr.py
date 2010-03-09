@@ -291,6 +291,26 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
         smtp.sendmail(msg['From'], msg['To'], msg.as_string())
 
 
+def closing_by_name(name):
+    """Like contextlib.closing, but close an attribute of the current object
+    given its name."""
+
+    def decorate_closing(func):
+        @wraps(func)
+        def new(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            finally:
+                try:
+                    closeit = getattr(args[0], name).close
+                except AttributeError:
+                    pass
+                else:
+                    closeit()
+        return new
+    return decorate_closing
+
+
 class MsgHandlerThread(threading.Thread):
     """Handle incoming messages in separate threads"""
 
@@ -303,19 +323,27 @@ class MsgHandlerThread(threading.Thread):
         self.cacert = cacert
 
     @logexception
+    @closing_by_name('sock')
     def run(self):
-        self.msg = self.sock.recv(65535)
-        csr = X509.load_request_string(self.msg)
+        msg = self.sock.recv(65535)
+        csr = X509.load_request_string(msg)
         CN = csr.get_subject().CN
 
+        sig, pem = msg.split('\n', 1)
+        if not verify_data(sig, pem, CN):
+            log.error("Signature verification failed reading CSR from %s.", self.src)
+            self.sock.send("FAIL\nSignature verification failed.\n")
+            return
+
         if CN != self.src:
+            error_message = "Hostname: %s doesn't match certificate CN: %s" % (
+                            self.src, CN)
             if config.getboolean('global', 'HostVerify'):
-                log.error("Hostname: %s doesn't match certificate CN: %s",
-                         self.src, CN)
-                raise HostVerifyError
+                log.error(error_message)
+                self.sock.send("FAIL\n" + error_message + "\n")
+                return
             else:
-                log.warn("Hostname: %s doesn't match certificate CN: %s",
-                         self.src, CN)
+                log.warn(error_message)
 
         if config.getboolean('global', 'AutoSign'):
             log.info("Auto-signing enabled, signing certificate")
@@ -325,7 +353,6 @@ class MsgHandlerThread(threading.Thread):
             except X509.X509Error, e:
                 log.warn("Signing failed. Will save for later signing.")
                 log.warn(str(e))
-
             else:
                 with tempfile.NamedTemporaryFile(
                         dir=os.path.dirname(cert_file(CN)),
@@ -338,6 +365,7 @@ class MsgHandlerThread(threading.Thread):
                 log.info("Storing Signed Cert")
                 self.store.write(certobj)
                 self.store.checkpoint()
+                self.sock.send('OK\n' + certobj.as_pem())
                 return
 
         #Just save the CSR for later signing
@@ -345,9 +373,10 @@ class MsgHandlerThread(threading.Thread):
                 dir=os.path.dirname(csr_cache_file(self.src)),
                 delete=False) as f_csr:
             log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
-            f_csr.write(self.msg)
+            f_csr.write(msg)
 
             os.rename(f_csr.name, csr_cache_file(self.src))
+        self.sock.send('OK\n')
 
     def __str__(self):
         return 'MsgHandlerThread(src=%r)' % self.src
@@ -1033,18 +1062,6 @@ def send_csr(localfile=None):
         sock.send(f_csr.read())
 
 
-class closing0(object):
-
-    def __init__(self, thing):
-        self.thing = thing
-
-    def __enter__(self):
-        return self.thing
-
-    def __exit__(self, *exc_info):
-        self.thing[0].close()
-
-
 def launch_daemon():
     """Start the certmgr listening socket and/or expiry timers"""
 
@@ -1089,10 +1106,15 @@ def launch_daemon():
         while True:
             read, write, error = select.select([csrsock, seqsock], [], [])
             if csrsock in read:
-                with closing0(csrsock.accept()) as (sock, src):
+                sock, src = csrsock.accept()
+                try:
                     thread = MsgHandlerThread(store, sock, src, cakey, cacert)
                     thread.name = 'MsgHandlerThread(src=%r)' % (src, )
                     thread.start()
+                except Exception:
+                    # Close the socket if there are any exceptions. The thread
+                    # will be responsible for closing the socket otherwise.
+                    sock.close()
             if seqsock in read:
                 with closing(seqsock.accept()[0]) as sock:
                     sock.send(str(sequence.next()))
