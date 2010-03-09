@@ -244,7 +244,7 @@ class StoreHandler(object):
                 with self.lock:
                     self.client.add(certfile)
             except pysvn.ClientError, e:
-                log.warn("Failed to add %s to repos: %s", certfile, e)
+                log.exception("Failed to add %s to repository", certfile)
 
         def __str__(self):
             return "StoreHandler.svn()"
@@ -397,7 +397,7 @@ class CertExpiry(object):
             log.debug("Cert expiry timer waiting for %d seconds",
                 crttimerlength)
         except (X509.X509Error, IOError), e:
-            log.warn("Certificate missing %s", e)
+            log.exception("Certificate missing")
             make_certs()
 
         if crttimerlength <= config.getint('global', 'NotifyFrequency'):
@@ -717,7 +717,7 @@ def make_ca(key, CN, Email="CA@CertMgr",
     cacert.set_not_before(notbefore)
     cacert.set_not_after(notafter)
 
-    cacert.set_serial_number = 1
+    cacert.set_serial_number(1)
 
     #Self-signed, so issuer derived from the cert itself
     cacert.set_issuer_name(cacert.get_subject())
@@ -916,7 +916,7 @@ def check_status():
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
-            log.error("Public CA file missing: %s", ca_cert_file())
+            log.exception("Public CA file missing: %s", ca_cert_file())
             sys.exit(2)
         else:
             if check_expiry(cacert) < config.get('ca', 'ExpiryDeadline'):
@@ -928,7 +928,7 @@ def check_status():
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
-            log.error("Private CA file missing: %s", ca_key_file())
+            log.exception("Private CA file missing: %s", ca_key_file())
             sys.exit(2)
 
 
@@ -941,7 +941,7 @@ def check_status():
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        log.error("Public certificate file missing: %s", e)
+        log.exception("Public certificate file missing: %s", e)
         sys.exit(2)
     else:
         #Get cert time without timezone chars
@@ -958,7 +958,7 @@ def check_status():
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        log.error("Private key file missing: %s", e)
+        log.exception("Private key file missing: %s", e)
         sys.exit(2)
 
 
@@ -970,9 +970,9 @@ class CSRChoice(object):
 
     """
 
-    def __init__(self, csr, csr_file):
+    def __init__(self, csr, csr_filename):
         self.csr = csr
-        self.csr_file = csr_file
+        self.csr_filename = csr_filename
 
     def store(self, cakey=None, cacert=None, store=None):
         """Sign and store the CSR.
@@ -987,7 +987,7 @@ class CSRChoice(object):
 
         """
 
-        if self.csr.get_subject().CN != os.path.splitext(self.csr_file)[0]:
+        if self.csr.get_subject().CN != os.path.splitext(self.csr_filename)[0]:
             if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
@@ -1022,23 +1022,23 @@ class CSRChoice(object):
     def remove(self):
         """Delete the CSR file from the queue."""
 
-        log.info("Deleting CSR file: %s", self.csr_file)
-        os.remove(self.csr_file)
+        log.info("Deleting CSR file: %s", self.csr_filename)
+        os.remove(self.csr_filename)
 
 
 def pending_csrs():
     """An interface to the set of pending CSRs."""
 
     csrpath = config.get('global', 'CSRCache')
-    for csr_file in os.listdir(csrpath):
-        csrloc = "%s/%s" % (csrpath, csr_file)
+    for csr_filename in os.listdir(csrpath):
+        csrloc = "%s/%s" % (csrpath, csr_filename)
         try:
             csr = csr_from_file(csrloc)
         except X509.X509Error, e:
             # If we can't read a CSR, there's probably extra crud in the cache.
             # Yield it anyway, the UI might still want to delete it.
             csr = None
-        yield CSRChoice(csr, os.path.join(csrpath, csr_file))
+        yield CSRChoice(csr, os.path.join(csrpath, csr_filename))
 
 
 def send_csr(csrobj):
@@ -1064,7 +1064,7 @@ def send_csr(csrobj):
                     delete=False) as f_crt:
                     f_crt.write(X509.load_cert_string(data).as_pem())
             except X509.X509Error:
-                log.warn("Error receiving cert.")
+                log.exception("Error receiving cert.")
 
             log.debug("Writing received cert")
             os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
@@ -1078,7 +1078,7 @@ def launch_daemon():
         try:
             cakey, cacert = check_cacerts()
         except CACertError:
-            log.error("Can't perform auto-signing without CA Certs")
+            log.exception("Can't perform auto-signing without CA Certs")
             sys.exit(2)
 
     store = StoreHandler.dispatch(config.get('global', 'StoreType'))
@@ -1091,7 +1091,7 @@ def launch_daemon():
         polling = Polling(store, config.getint('global', 'PollTimer'))
         polling.poll_timer()
     except ConfigParser.Error:
-        log.warn("PollTimer value not set in config")
+        log.exception("PollTimer value not set in config")
 
     if config.get('global', 'IsMaster'):
         #Listen for incoming messages
@@ -1138,7 +1138,7 @@ def check_cacerts():
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        log.error("CA certificate Missing.  Create this, or call --makecerts.")
+        log.exception("CA certificate Missing.  Create this, or call --makecerts.")
         raise CACertError
 
 
@@ -1156,7 +1156,7 @@ def check_paths():
         except OSError, e:
             if e.errno == errno.EEXIST:
                 continue
-            log.error("Unable to create path: %s: %s",
+            log.exception("Unable to create path: %s: %s",
                 config.get('global', path),
                 e)
 
