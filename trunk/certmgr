@@ -23,19 +23,12 @@ def main():
     parser.add_option("-c", "--check",
                       action="store_true", dest="check",
                       help="Check status of own CA and Client certificates.")
-    parser.add_option("-x", "--sign",
+    parser.add_option("-s", "--sign",
                       action="store_true", dest="sign",
                       help="View and sign queued CSRs.")
-    parser.add_option("-s", "--send",
-                      action="store_true", dest="send",
-                      help="Send a CSR file to the CertMgr Master.")
     parser.add_option("-g", "--get",
                       action="store_true", dest="get",
                       help="Update certificates from the central store.")
-    parser.add_option("-f", "--file",
-                      dest="file",
-                      help="Specifies the CSR file to be sent with --send.  \
-                      If unset, defaults to client CSR.")
 
     parser.set_defaults(makecerts=False, daemon=False, send=False)
     (options, args) = parser.parse_args()
@@ -48,9 +41,6 @@ def main():
 
     if options.daemon:
         certmgr.launch_daemon()
-
-    if options.send:
-        certmgr.send_csr(options.file)
 
     if options.sign:
         with certmgr.StoreHandler.dispatch(

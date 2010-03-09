@@ -211,7 +211,7 @@ class StoreHandler(object):
             log.debug("Setting up svn repository (co)")
             with self.lock:
                 self.client.checkout(config.get('global', 'StoreUrl'),
-                                    self.storedir)
+                                     self.storedir)
 
         def checkpoint(self):
             """Perform an svn checkin"""
@@ -318,15 +318,25 @@ class MsgHandlerThread(threading.Thread):
     @logexception
     @closing_by_name('sock')
     def run(self):
-        msg = self.sock.recv(65535)
-        csr = X509.load_request_string(msg)
+        sockfile = self.sock.makefile()
+        msg = sockfile.readlines()
+        sig = msg[0]
+        pem = ''.join(msg[1:])
+        if pem[-1:] == '\n':
+            pem = pem[:-1]
+        csr = X509.load_request_string(pem)
         CN = csr.get_subject().CN
 
-        sig, pem = msg.split('\n', 1)
-        if not verify_data(sig, pem, CN):
-            log.error("Signature verification failed reading CSR from %s.", self.src)
-            self.sock.send("FAIL\nSignature verification failed.\n")
-            return
+        try:
+            pub = cert_from_file(cert_store_file(CN)).get_pubkey()
+        except IOError:
+            pass
+        else:
+            if not verify_data(sig, pem, pub):
+                log.error("Signature verification failed reading CSR from %s.",
+                          self.src)
+                self.sock.send("FAIL\nSignature verification failed.\n")
+                return
 
         if CN != self.src:
             error_message = "Hostname: %s doesn't match certificate CN: %s" % (
@@ -347,13 +357,14 @@ class MsgHandlerThread(threading.Thread):
                 log.warn("Signing failed. Will save for later signing.")
                 log.warn(str(e))
             else:
-                with tempfile.NamedTemporaryFile(
-                        dir=os.path.dirname(cert_file(CN)),
-                        delete=False) as f_crt:
-                    log.info("Writing certificate: %s", cert_file(CN))
-                    f_crt.write(certobj.as_pem())
+                pass
+#                with tempfile.NamedTemporaryFile(
+#                        dir=os.path.dirname(cert_file(CN)),
+#                        delete=False) as f_crt:
+#                    log.info("Writing certificate: %s", cert_file(CN))
+#                    f_crt.write(certobj.as_pem())
 
-                os.rename(f_crt.name, cert_file(CN))
+#                os.rename(f_crt.name, cert_file(CN))
 
                 log.info("Storing Signed Cert")
                 self.store.write(certobj)
@@ -577,7 +588,7 @@ def sign_data(data):
     return base64.b64encode(signingkey.sign_final())
 
 
-def verify_data(sig, data, CN):
+def verify_data(sig, data, pub):
     """Verify a signature (base64 object), return the contents.
 
     Returns True if signature is valid
@@ -585,7 +596,6 @@ def verify_data(sig, data, CN):
     """
 
     signature = base64.b64decode(sig)
-    pub = cert_from_file(cert_store_file(CN)).get_pubkey()
 
     pub.verify_init()
     pub.verify_update(data)
@@ -892,7 +902,7 @@ def make_certs(caoverwrite=False):
     os.rename(f_csr.name, csr_file(CN))
 
     if config.getboolean('client', 'AutoSend'):
-        send_csr()
+        send_csr(csr)
 
 
 def check_expiry(certobj):
@@ -1041,18 +1051,33 @@ def pending_csrs():
         yield CSRChoice(csr, os.path.join(csrpath, csr_file))
 
 
-def send_csr(localfile=None):
+def send_csr(csrobj):
     "Send csr to certmgr master"
 
-    sendfile = localfile or csr_file(config.get('cert', 'CN'))
-
-    log.info("Sending CSR %s for signing", sendfile)
-    with nested(
-            open(sendfile),
-            closing(socket.socket())) as (f_csr, sock):
+    msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
+    log.info("Sending CSR %s for signing")
+    with closing(socket.socket()) as sock:
         sock.connect((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterPort')))
-        sock.send(f_csr.read())
+        sock.send(msg)
+        sock.shutdown(socket.SHUT_WR)
+        sockfile = sock.makefile()
+        answer = sockfile.readlines()
+        rval = answer[0].strip('\n')
+        data = ''.join(answer[1:])
+        if rval == 'OK' and data:
+            log.debug("CSR received by server")
+            try:
+                with tempfile.NamedTemporaryFile(
+                    dir=os.path.dirname(cert_file(
+                        config.get('cert', 'CN'))),
+                    delete=False) as f_crt:
+                    f_crt.write(X509.load_cert_string(data).as_pem())
+            except X509.X509Error:
+                log.warn("Error receiving cert.")
+
+            log.debug("Writing received cert")
+            os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
 
 
 def launch_daemon():
