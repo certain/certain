@@ -23,6 +23,7 @@ from email.mime.text import MIMEText
 from functools import wraps
 from collections import namedtuple
 import uuid
+import base64
 
 
 __all__ = ['StoreHandler',
@@ -303,7 +304,7 @@ class MsgHandlerThread(threading.Thread):
 
     @logexception
     def run(self):
-        self.msg = sock.recv(65535)
+        self.msg = self.sock.recv(65535)
         csr = X509.load_request_string(self.msg)
         CN = csr.get_subject().CN
 
@@ -542,6 +543,34 @@ def ca_key_file():
                       config.get('global', 'CAKey'))
 
 
+def sign_data(data):
+    """Sign data using the private key, return a base64 string."""
+
+    signingkey = EVP.load_key(key_file(config.get('cert', 'CN')),
+                              callback=lambda passphrase: 'certmgr')
+
+    signingkey.sign_init()
+    signingkey.sign_update(data)
+
+    return base64.b64encode(signingkey.sign_final())
+
+
+def verify_data(sig, data, CN):
+    """Verify a signature (base64 object), return the contents.
+
+    Returns True if signature is valid
+
+    """
+
+    signature = base64.b64decode(sig)
+    pub = cert_from_file(cert_store_file(CN)).get_pubkey()
+
+    pub.verify_init()
+    pub.verify_update(data)
+
+    return pub.verify_final(signature)
+
+
 def make_key(bits=2048):
     """Create RSA key
 
@@ -711,6 +740,12 @@ def cert_file(name):
     """Return full path of cert file from config"""
 
     return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
+
+
+def cert_store_file(name):
+    """Return full path of central store cert file from config"""
+
+    return "%s/%s.crt" % (config.get('global', 'StoreDir'), name)
 
 
 def key_file(name):
@@ -999,10 +1034,13 @@ def send_csr(localfile=None):
 
 
 class closing0(object):
+
     def __init__(self, thing):
         self.thing = thing
+
     def __enter__(self):
         return self.thing
+
     def __exit__(self, *exc_info):
         self.thing[0].close()
 
@@ -1055,7 +1093,7 @@ def launch_daemon():
                     thread = MsgHandlerThread(store, sock, src, cakey, cacert)
                     thread.name = 'MsgHandlerThread(src=%r)' % (src, )
                     thread.start()
-            if tcpsock in read:
+            if seqsock in read:
                 with closing(seqsock.accept()[0]) as sock:
                     sock.send(str(sequence.next()))
 
