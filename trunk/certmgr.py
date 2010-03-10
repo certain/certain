@@ -64,7 +64,7 @@ def logexception(func):
     def run(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except:
+        except Exception:
             log.exception("Exception caught in thread %s",
                 threading.current_thread().name)
     return run
@@ -243,7 +243,7 @@ class StoreHandler(object):
             try:
                 with self.lock:
                     self.client.add(certfile)
-            except pysvn.ClientError, e:
+            except pysvn.ClientError:
                 log.exception("Failed to add %s to repository", certfile)
 
         def __str__(self):
@@ -353,7 +353,7 @@ class MsgHandlerThread(threading.Thread):
             try:
                 certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
-            except X509.X509Error, e:
+            except X509.X509Error:
                 log.exception("Signing failed. Will save for later signing.")
             else:
                 log.info("Storing Signed Cert")
@@ -385,8 +385,7 @@ class CertExpiry(object):
         self.store = store
 
     def expiry_timer(self):
-        crtpath = "%s/%s.crt" % (config.get('global', 'StoreDir'),
-                             config.get('cert', 'CN'))
+        crtpath = cert_store_file(config.get('cert', 'CN'))
 
         crttimerlength = 0
         crt = None
@@ -396,7 +395,7 @@ class CertExpiry(object):
                 'cert', 'ExpiryDeadline')
             log.debug("Cert expiry timer waiting for %d seconds",
                 crttimerlength)
-        except (X509.X509Error, IOError), e:
+        except (X509.X509Error, IOError):
             log.exception("Certificate missing")
             make_certs()
 
@@ -432,7 +431,7 @@ class CertExpiry(object):
         """Launched when expired cert timer completes"""
 
         try:
-            if notify:
+            if notify and cert:
                 for notifytype in config.get(
                     'global', 'ExpiryNotifiers').replace(' ', '').split(','):
                     ExpiryNotifyHandler.dispatch(notifytype, cert)
@@ -793,7 +792,7 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
     object.
 
     With the default arguments, ask for a file to be created only if it
-    doesn't already exist. If it does, expect an OSError exception  "e"
+    doesn't already exist. If it does, expect an OSError exception "e"
     with e.errno == errno.EEXIST.
 
     """
@@ -977,7 +976,7 @@ class CSRChoice(object):
     def store(self, cakey=None, cacert=None, store=None):
         """Sign and store the CSR.
 
-        If HostVerify is set iin the config file, raise HostVerifyError.
+        If HostVerify is set in the config file, may raise HostVerifyError.
         If cakey or cacert are not given, try to get them. This may raise
         CACertError.
         If store is not given, try to get it. If this fails it will ONLY LOG A
@@ -987,7 +986,8 @@ class CSRChoice(object):
 
         """
 
-        if self.csr.get_subject().CN != os.path.splitext(self.csr_filename)[0]:
+        if (self.csr.get_subject().CN != 
+                os.path.splitext(os.path.basename(self.csr_filename))[0]):
             if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
@@ -1031,14 +1031,14 @@ def pending_csrs():
 
     csrpath = config.get('global', 'CSRCache')
     for csr_filename in os.listdir(csrpath):
-        csrloc = "%s/%s" % (csrpath, csr_filename)
+        csrloc = os.path.join(csrpath, csr_filename)
         try:
             csr = csr_from_file(csrloc)
-        except X509.X509Error, e:
+        except X509.X509Error:
             # If we can't read a CSR, there's probably extra crud in the cache.
             # Yield it anyway, the UI might still want to delete it.
             csr = None
-        yield CSRChoice(csr, os.path.join(csrpath, csr_filename))
+        yield CSRChoice(csr, csrloc)
 
 
 def send_csr(csrobj):
@@ -1049,9 +1049,9 @@ def send_csr(csrobj):
     with closing(socket.socket()) as sock:
         sock.connect((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterPort')))
-        sock.send(msg)
-        sock.shutdown(socket.SHUT_WR)
         sockfile = sock.makefile()
+        sockfile.write(msg)
+        sock.shutdown(socket.SHUT_WR)
         answer = sockfile.readlines()
         rval = answer[0].strip('\n')
         data = ''.join(answer[1:])
@@ -1075,11 +1075,7 @@ def launch_daemon():
 
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('global', 'AutoSign'):
-        try:
-            cakey, cacert = check_cacerts()
-        except CACertError:
-            log.exception("Can't perform auto-signing without CA Certs")
-            sys.exit(2)
+        cakey, cacert = check_cacerts()
 
     store = StoreHandler.dispatch(config.get('global', 'StoreType'))
     store.setup()
@@ -1091,7 +1087,7 @@ def launch_daemon():
         polling = Polling(store, config.getint('global', 'PollTimer'))
         polling.poll_timer()
     except ConfigParser.Error:
-        log.exception("PollTimer value not set in config")
+        log.warn("PollTimer value not set in config", exc_info=sys.exc_info())
 
     if config.get('global', 'IsMaster'):
         #Listen for incoming messages
@@ -1156,9 +1152,8 @@ def check_paths():
         except OSError, e:
             if e.errno == errno.EEXIST:
                 continue
-            log.exception("Unable to create path: %s: %s",
-                config.get('global', path),
-                e)
+            log.exception("Unable to create path: %s",
+                config.get('global', path))
 
 
 log = logging.getLogger('certmgr')
