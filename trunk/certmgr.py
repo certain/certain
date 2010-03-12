@@ -551,20 +551,6 @@ def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
     return info
 
 
-def ca_cert_file():
-    """Return full path of CA cert file from config"""
-
-    return "%s/%s" % (config.get('global', 'CAPath'),
-                      config.get('global', 'CACert'))
-
-
-def ca_key_file():
-    """Return full path of CA key file from config"""
-
-    return "%s/%s" % (config.get('global', 'CAPrivatePath'),
-                      config.get('global', 'CAKey'))
-
-
 def sign_data(data):
     """Sign data using the private key, return a base64 string."""
 
@@ -732,6 +718,20 @@ def make_ca(key, CN, Email="CA@CertMgr",
     return cacert
 
 
+def ca_cert_file():
+    """Return full path of CA cert file from config"""
+
+    return os.path.join(config.get('global', 'CAPath'),
+                     config.get('global', 'CACert'))
+
+
+def ca_key_file():
+    """Return full path of CA key file from config"""
+
+    return os.path.join(config.get('global', 'CAPrivatePath'),
+                      config.get('global', 'CAKey'))
+
+
 def key_from_file(keyfilename):
     """Read a private key from file
 
@@ -760,31 +760,36 @@ def csr_from_file(csrfilename):
 def cert_file(name):
     """Return full path of cert file from config"""
 
-    return "%s/%s.crt" % (config.get('global', 'CertPath'), name)
+    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
+                     ".crt")
 
 
 def cert_store_file(name):
     """Return full path of central store cert file from config"""
 
-    return "%s/%s.crt" % (config.get('global', 'StoreDir'), name)
+    return "%s%s" % (os.path.join(config.get('global', 'StoreDir'), name),
+                     ".crt")
 
 
 def key_file(name):
     """Return full path of key file from config"""
 
-    return "%s/%s.key" % (config.get('global', 'PrivatePath'), name)
+    return "%s%s" % (os.path.join(config.get('global', 'PrivatePath'), name),
+                     ".key")
 
 
 def csr_file(name):
     """Return full path of csr file from config"""
 
-    return "%s/%s.csr" % (config.get('global', 'CertPath'), name)
+    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
+                     ".csr")
 
 
 def csr_cache_file(name):
     """Return full path of csr file from config"""
 
-    return "%s/%s.csr" % (config.get('global', 'CSRCache'), name)
+    return "%s%s" % (os.path.join(config.get('global', 'CSRCache'), name),
+                     ".csr")
 
 
 def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
@@ -986,7 +991,7 @@ class CSRChoice(object):
 
         """
 
-        if (self.csr.get_subject().CN != 
+        if (self.csr.get_subject().CN !=
                 os.path.splitext(os.path.basename(self.csr_filename))[0]):
             if config.getboolean('global', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
@@ -1134,7 +1139,7 @@ def check_cacerts():
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        log.exception("CA certificate Missing.  Create this, or call --makecerts.")
+        log.exception("CA certificate Missing.  Call --makecerts.")
         raise CACertError
 
 
