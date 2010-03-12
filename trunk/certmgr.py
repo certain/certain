@@ -384,28 +384,31 @@ class CertExpiry(object):
         self.cakey = cakey
         self.store = store
 
-    def expiry_timer(self):
-        crtpath = cert_store_file(config.get('cert', 'CN'))
-
-        crttimerlength = 0
-        crt = None
-        try:
-            crt = cert_from_file(crtpath)
-            crttimerlength = check_expiry(crt) - config.getint(
+    def expiry_timer(self, cert=None):
+        certtimerlength = 0
+        if not cert:
+            self.store.fetch()
+            try:
+                cert = cert_from_file(cert_store_file(config.get('cert', 'CN')))
+            except (X509.X509Error, IOError):
+                log.exception("Certificate missing")
+                try:
+                    cert = make_certs()
+                except Exception:
+                    pass
+        if cert:
+            certtimerlength = check_expiry(cert) - config.getint(
                 'cert', 'ExpiryDeadline')
             log.debug("Cert expiry timer waiting for %d seconds",
-                crttimerlength)
-        except (X509.X509Error, IOError):
-            log.exception("Certificate missing")
-            make_certs()
+                certtimerlength)
 
-        if crttimerlength <= config.getint('global', 'NotifyFrequency'):
-            crttimerlength = config.getint('global', 'NotifyFrequency')
+        if certtimerlength <= config.getint('global', 'NotifyFrequency'):
+            certtimerlength = config.getint('global', 'NotifyFrequency')
             log.debug("Resetting cert timer wait to %d seconds",
-                      crttimerlength)
+                      certtimerlength)
 
-        self.tcrt = threading.Timer(crttimerlength,
-                                    self.expiry_action, [crt])
+        self.tcrt = threading.Timer(certtimerlength,
+                                    self.expiry_action, [cert])
         self.tcrt.name = "Cert expiry timer"
         self.tcrt.daemon = True
         self.tcrt.start()
@@ -433,19 +436,24 @@ class CertExpiry(object):
         """Launched when expired cert timer completes"""
 
         try:
-            if notify and cert:
+            if not cert:
+                self.store.fetch()
+                try:
+                    cert = cert_from_file(cert_store_file(config.get('cert', 'CN')))
+                except IOError:
+                    pass
+                else:
+                    return
+            elif notify:
                 for notifytype in config.get(
                     'global', 'ExpiryNotifiers').replace(' ', '').split(','):
                     ExpiryNotifyHandler.dispatch(notifytype, cert)
 
             #Need to allow overwriting of CA
             #Re-sending of CSR will happen for free
-            make_certs(caoverwrite)
-
-            #Update the local cert store
-            self.store.fetch()
+            cert = make_certs(caoverwrite)
         finally:
-            self.expiry_timer()
+            self.expiry_timer(cert)
 
     def __str__(self):
         return 'CertExpiry(store=%r)' % self.store
@@ -902,7 +910,7 @@ def make_certs(caoverwrite=False):
     os.rename(f_csr.name, csr_file(CN))
 
     if config.getboolean('client', 'AutoSend'):
-        send_csr(csr)
+        return send_csr(csr)
 
 
 def check_expiry(certobj):
@@ -1070,16 +1078,18 @@ def send_csr(csrobj):
             if rval == 'OK' and data:
                 log.debug("CSR received by server")
                 try:
+                    cert = X509.load_cert_string(data)
                     with tempfile.NamedTemporaryFile(
                         dir=os.path.dirname(cert_file(
                             config.get('cert', 'CN'))),
                         delete=False) as f_crt:
-                        f_crt.write(X509.load_cert_string(data).as_pem())
+                        f_crt.write(cert.as_pem())
                 except X509.X509Error:
                     log.exception("Error receiving cert.")
 
                 log.debug("Writing received cert")
                 os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
+                return cert
     except socket.error:
         log.exception("Socket Error connecting to Master.")
 
