@@ -318,7 +318,7 @@ class MsgHandlerThread(threading.Thread):
     @logexception
     @closing_by_name('sock')
     def run(self):
-        sockfile = self.sock.makefile()
+        sockfile = self.sock.makefile('rw', 0)
         msg = sockfile.readlines()
         sig = msg[0]
         pem = ''.join(msg[1:])
@@ -649,6 +649,10 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     notbefore = ASN1.ASN1_UTCTIME()
     notbefore.set_time(now)
+
+    califetime = check_expiry(cacert)
+    if lifetime > califetime:
+        lifetime = califetime - config.getint('ca', 'ExpiryDeadline')
 
     notafter = ASN1.ASN1_UTCTIME()
     notafter.set_time(now + lifetime)
@@ -1053,28 +1057,31 @@ def send_csr(csrobj):
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
     log.info("Sending CSR %s for signing")
-    with closing(socket.socket()) as sock:
-        sock.connect((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterPort')))
-        sockfile = sock.makefile()
-        sockfile.write(msg)
-        sock.shutdown(socket.SHUT_WR)
-        answer = sockfile.readlines()
-        rval = answer[0].strip('\n')
-        data = ''.join(answer[1:])
-        if rval == 'OK' and data:
-            log.debug("CSR received by server")
-            try:
-                with tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(cert_file(
-                        config.get('cert', 'CN'))),
-                    delete=False) as f_crt:
-                    f_crt.write(X509.load_cert_string(data).as_pem())
-            except X509.X509Error:
-                log.exception("Error receiving cert.")
+    try:
+        with closing(socket.socket()) as sock:
+            sock.connect((config.get('global', 'MasterAddress'),
+                          config.getint('global', 'MasterPort')))
+            sockfile = sock.makefile('rw', 0)
+            sockfile.write(msg)
+            sock.shutdown(socket.SHUT_WR)
+            answer = sockfile.readlines()
+            rval = answer[0].strip('\n')
+            data = ''.join(answer[1:])
+            if rval == 'OK' and data:
+                log.debug("CSR received by server")
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        dir=os.path.dirname(cert_file(
+                            config.get('cert', 'CN'))),
+                        delete=False) as f_crt:
+                        f_crt.write(X509.load_cert_string(data).as_pem())
+                except X509.X509Error:
+                    log.exception("Error receiving cert.")
 
-            log.debug("Writing received cert")
-            os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
+                log.debug("Writing received cert")
+                os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
+    except socket.error:
+        log.exception("Socket Error connecting to Master.")
 
 
 def launch_daemon():
