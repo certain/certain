@@ -411,8 +411,10 @@ class CertExpiry(object):
         self.tcrt.start()
 
         if self.cacert is not None:
-            catimerlength = check_expiry(self.cacert) - config.getint(
-                'ca', 'ExpiryDeadline')
+            #CA expiry mustn't be less than the expiry of the certs it issues
+            catimerlength = check_expiry(self.cacert) - (
+                config.getint('ca', 'ExpiryDeadline') +
+                config.getint('cert', 'CertLifetime'))
             log.debug("CA expiry timer waiting for %d seconds", catimerlength)
             if catimerlength <= config.getint('global', 'NotifyFrequency'):
                 catimerlength = config.getint('global', 'NotifyFrequency')
