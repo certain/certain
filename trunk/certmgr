@@ -53,7 +53,7 @@ def main():
                 else:
                     dosign = raw_input(
                             "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
-                                csr.csr_file,
+                                csr.csr_filename,
                                 csr.csr.get_subject().CN)
                         ).strip().lower()
                 if csr.csr and dosign == 'y':
