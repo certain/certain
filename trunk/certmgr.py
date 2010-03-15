@@ -1040,8 +1040,12 @@ def send_csr(csrobj):
         log.debug("Writing received cert")
         os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
         return cert
-    else:
+    elif rval == 'OK':
+        log.debug("CSR received and cached by server.")
+    elif rval == 'FAIL':
         log.debug("Error sending CSR: %s", data)
+    else:
+        log.debug("Error receiving/parsing answer from master.")
 
 
 def launch_daemon():
