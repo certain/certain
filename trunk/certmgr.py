@@ -27,7 +27,6 @@ import base64
 
 
 __all__ = ['StoreHandler',
-           'check_status',
            'pending_csrs',
            'sign_csr',
            'send_csr',
