@@ -10,7 +10,7 @@ def main():
     certmgr.check_paths()
 
     parser = OptionParser()
-    parser.add_option("-o", "--config",
+    parser.add_option("-c", "--config",
                       dest="config_file",
                       help="Specifies the config file to use \
                       if unset, defaults to /etc/certmgr/certmgr.cfg")
