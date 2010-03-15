@@ -661,7 +661,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     califetime = check_expiry(cacert)
     if lifetime > califetime:
-        lifetime = califetime - config.getint('ca', 'ExpiryDeadline')
+        lifetime = califetime
 
     notafter = ASN1.ASN1_UTCTIME()
     notafter.set_time(now + lifetime)
@@ -1021,25 +1021,27 @@ def send_csr(csrobj):
             answer = sockfile.readlines()
             rval = answer[0].strip('\n')
             data = ''.join(answer[1:])
-            if rval == 'OK' and data:
-                log.debug("CSR received by server")
-                try:
-                    cert = X509.load_cert_string(data)
-                    with tempfile.NamedTemporaryFile(
-                        dir=os.path.dirname(cert_file(
-                            config.get('cert', 'CN'))),
-                        delete=False) as f_crt:
-                        f_crt.write(cert.as_pem())
-                except X509.X509Error:
-                    log.exception("Error receiving cert.")
+    except socket.error, IndexError:
+        log.exception("Error communicating with master.")
+        return
 
-                log.debug("Writing received cert")
-                os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
-                return cert
-            else:
-                log.debug("Error sending CSR: %s", data)
-    except socket.error:
-        log.exception("Socket Error connecting to Master.")
+    if rval == 'OK' and data:
+        log.debug("CSR received by server")
+        try:
+            cert = X509.load_cert_string(data)
+            with tempfile.NamedTemporaryFile(
+                dir=os.path.dirname(cert_file(
+                    config.get('cert', 'CN'))),
+                delete=False) as f_crt:
+                f_crt.write(cert.as_pem())
+        except X509.X509Error:
+            log.exception("Error receiving cert.")
+
+        log.debug("Writing received cert")
+        os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
+        return cert
+    else:
+        log.debug("Error sending CSR: %s", data)
 
 
 def launch_daemon():
