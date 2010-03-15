@@ -389,7 +389,8 @@ class CertExpiry(object):
         if not cert:
             self.store.fetch()
             try:
-                cert = cert_from_file(cert_store_file(config.get('cert', 'CN')))
+                cert = cert_from_file(cert_store_file(
+                    config.get('cert', 'CN')))
             except (X509.X509Error, IOError):
                 log.exception("Certificate missing")
                 try:
@@ -439,7 +440,8 @@ class CertExpiry(object):
             if not cert:
                 self.store.fetch()
                 try:
-                    cert = cert_from_file(cert_store_file(config.get('cert', 'CN')))
+                    cert = cert_from_file(cert_store_file(
+                        config.get('cert', 'CN')))
                 except IOError:
                     pass
                 else:
@@ -1090,6 +1092,8 @@ def send_csr(csrobj):
                 log.debug("Writing received cert")
                 os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
                 return cert
+            else:
+                log.debug("Error sending CSR: %s", data)
     except socket.error:
         log.exception("Socket Error connecting to Master.")
 
