@@ -20,9 +20,6 @@ def main():
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
                       help="Start CertMgr Daemon.")
-    parser.add_option("-c", "--check",
-                      action="store_true", dest="check",
-                      help="Check status of own CA and Client certificates.")
     parser.add_option("-s", "--sign",
                       action="store_true", dest="sign",
                       help="View and sign queued CSRs.")
@@ -30,8 +27,7 @@ def main():
                       action="store_true", dest="get",
                       help="Update certificates from the central store.")
 
-    parser.set_defaults(makecerts=False, daemon=False, send=False)
-    (options, args) = parser.parse_args()
+    options, args = parser.parse_args()
 
     if options.config_file:
         certmgr.parse_config(options.config_file)
@@ -60,9 +56,6 @@ def main():
                     csr.store(store)
                 elif dosign == 'd':
                     csr.remove()
-
-    if options.check:
-        certmgr.check_status()
 
     if options.get:
         with certmgr.StoreHandler.dispatch(

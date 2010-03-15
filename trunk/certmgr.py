@@ -927,61 +927,6 @@ def check_expiry(certobj):
             certobj.get_not_after()), '%b %d %H:%M:%S %Y %Z')) - time.time())
 
 
-def check_status():
-    if config.getboolean('global', 'IsMaster'):
-        #Check CA certs
-        try:
-            cacert = cert_from_file(ca_cert_file())
-        ###FIXME (what if the cert is there, but corrupt?)
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            log.exception("Public CA file missing: %s", ca_cert_file())
-            sys.exit(2)
-        else:
-            if check_expiry(cacert) < config.get('ca', 'ExpiryDeadline'):
-                log.warn("CA certificate %s expires in less than 7 days!",
-                        ca_cert_file())
-
-        try:
-            open(ca_key_file()).close()
-        except IOError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            log.exception("Private CA file missing: %s", ca_key_file())
-            sys.exit(2)
-
-
-    #Check certs status
-    CN = config.get('cert', 'CN')
-
-    try:
-        certinf = cert_from_file(cert_file(CN))
-    ###FIXME (What if cert is there but corrupt?)
-    except IOError, e:
-        if e.errno != errno.ENOENT:
-            raise
-        log.exception("Public certificate file missing: %s", e)
-        sys.exit(2)
-    else:
-        #Get cert time without timezone chars
-        notafter = time.mktime(time.strptime(str(certinf.get_not_after()),
-                                                '%b %d %H:%M:%S %Y %Z'))
-
-        #If notafter is less than a week away...
-        if (notafter - time.time()) < 604800:
-            log.warn("Certificate %s expires in less than 7 days!",
-                     cert_file(CN))
-
-    try:
-        open(key_file(CN)).close()
-    except IOError, e:
-        if e.errno != errno.ENOENT:
-            raise
-        log.exception("Private key file missing: %s", e)
-        sys.exit(2)
-
-
 class CSRChoice(object):
     """Representation of a CSR in the pending queue.
 
@@ -1152,7 +1097,7 @@ def launch_daemon():
                     sock.send(str(sequence.next()))
 
 
-def check_cacerts():
+def check_cacerts(recurse=True):
     """Check for existence of CA cert and key file"""
 
     try:
@@ -1162,8 +1107,11 @@ def check_cacerts():
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        log.exception("CA certificate Missing.  Call --makecerts.")
-        raise CACertError
+        make_certs()
+        if recurse:
+            return check_cacerts(False)
+        else:
+            log.exception("CA certificate missing!")
 
 
 def check_paths():
