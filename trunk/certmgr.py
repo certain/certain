@@ -442,6 +442,7 @@ class CertExpiry(object):
                     cert = cert_from_file(cert_store_file(
                         config.get('cert', 'CN')))
                 except IOError:
+                    # Expected, especially when starting for the first time.
                     pass
                 else:
                     return
@@ -1019,14 +1020,14 @@ def send_csr(csrobj):
             sockfile.write(msg)
             sock.shutdown(socket.SHUT_WR)
             answer = sockfile.readlines()
-            rval = answer[0].strip('\n')
-            data = ''.join(answer[1:])
+        rval = answer[0].strip('\n')
+        data = ''.join(answer[1:])
     except socket.error, IndexError:
         log.exception("Error communicating with master.")
         return
 
     if rval == 'OK' and data:
-        log.debug("CSR received by server")
+        log.info("CSR received by server")
         try:
             cert = X509.load_cert_string(data)
             with tempfile.NamedTemporaryFile(
@@ -1041,11 +1042,11 @@ def send_csr(csrobj):
         os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
         return cert
     elif rval == 'OK':
-        log.debug("CSR received and cached by server.")
-    elif rval == 'FAIL':
-        log.debug("Error sending CSR: %s", data)
-    else:
-        log.debug("Error receiving/parsing answer from master.")
+        log.info("CSR received and cached by server.")
+    elif rval == 'FAIL' and data:
+        log.error("Error processing CSR: %s", data)
+    else: # Implies a solo 'FAIL' or something else bad
+        log.error("Error receiving/parsing answer from master.")
 
 
 def launch_daemon():
