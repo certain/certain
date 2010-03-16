@@ -643,6 +643,10 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     """
 
+    if csr.get_subject().CN == cacert.get_subject().CN:
+        log.error("Won't sign a cert with the same Common Name as the CA")
+    return
+
     capub = cacert.get_pubkey()
     capub.assign_rsa(cakey, capture=False)
 
