@@ -133,6 +133,13 @@ class StoreHandler(object):
 
     @classmethod
     def dispatch(cls, name):
+        """Dispatch a store object to handle this type of Store.
+
+        Returns an object of the appropriate type, or None. Also logs a message
+        if the store type could not be found.
+
+        """
+
         cls.name = name
         return getattr(cls, name, cls.storeerror)()
 
@@ -164,6 +171,7 @@ class StoreHandler(object):
         """Webdav StoreHandler plugin"""
 
         def __init__(self):
+            super(webdav, self).__init__()
             self.url = urlparse(config.get('store', 'StoreUrl'))
 
             if self.url.scheme == "https":
@@ -198,6 +206,7 @@ class StoreHandler(object):
         """Subversion StoreHandler plugin"""
 
         def __init__(self):
+            super(svn, self).__init__()
             self.client = pysvn.Client()
             self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
                 True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
@@ -254,6 +263,13 @@ class ExpiryNotifyHandler(object):
 
     @classmethod
     def dispatch(cls, name, certobj):
+        """Dispatch a method to handle this type of expiry.
+
+        Pass a certificate object as the only parameter. These methods may
+        return anything, but usually None.
+
+        """
+
         cls.name = name
         return getattr(cls, name, cls.notifyerror)(certobj)
 
@@ -384,6 +400,14 @@ class CertExpiry(object):
         self.store = store
 
     def expiry_timer(self, cert=None):
+        """Set timers for certificates passed or in the store.
+
+        Carefully examine the certificate given as an argument or in the local
+        store, attempting to create one if it doesn't already exist. If one
+        is available, set a timer to run expiry_action. If not, set a shorter
+        timer to do the same.
+
+        """
         certtimerlength = 0
         if not cert:
             self.store.fetch()
@@ -431,7 +455,16 @@ class CertExpiry(object):
 
     @logexception
     def expiry_action(self, cert, caoverwrite=False, notify=False):
-        """Launched when expired cert timer completes"""
+        """Launched when expired cert timer completes.
+        
+        If passed a certificate, attempt to refresh it by calling make_certs.
+        If not, attempt to retrieve one from the store. If this doesn't work,
+        call make_certs anyway. If a new cert was obtained, do nothing more.
+
+        In all cases, call expiry_timer again to set a new timer with
+        (hopefully) a new certificate.
+        
+        """
 
         try:
             if not cert:
@@ -460,12 +493,15 @@ class CertExpiry(object):
 
 
 class Polling(object):
+    """Container for timer to poll for store changes."""
 
     def __init__(self, store, polltime):
         self.store = store
         self.polltime = polltime
 
     def poll_timer(self):
+        """Set up a timer to check the store."""
+
         if self.polltime:
             log.debug("Starting poll timer for %d seconds", self.polltime)
             self.timer = threading.Timer(self.polltime, self.poll_action)
@@ -474,6 +510,8 @@ class Polling(object):
 
     @logexception
     def poll_action(self):
+        """Fetch new certificates, then set another timer."""
+
         try:
             log.debug("Poll: calling store.fetch")
             self.store.fetch()
@@ -490,6 +528,13 @@ class Sequence(object):
 
     @abc.abstractmethod
     def next(self):
+        """Provide the "next" integer in the sequence.
+
+        Guaranteed to be unique but not necessarily consecutive, monotonic or
+        increasing.
+
+        """
+
         pass
 
 
@@ -526,6 +571,13 @@ class UUIDSequence(Sequence):
 
 
 def get_network_seq():
+    """Attempt to connect to the network service running on the master and
+    return a unique integer.
+    
+    May throw many exceptions, including socket.error and ValueError.
+    
+    """
+
     with closing(socket.socket()) as sock:
         sock.connect((config.get('global', 'MasterAddress'),
                       config.getint('global', 'MasterSeqPort')))
@@ -645,7 +697,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     if csr.get_subject().CN == cacert.get_subject().CN:
         log.error("Won't sign a cert with the same Common Name as the CA")
-    return
+        return
 
     capub = cacert.get_pubkey()
     capub.assign_rsa(cakey, capture=False)
@@ -840,7 +892,7 @@ def make_certs(caoverwrite=False):
         log.info("Generating CA certificates for master")
         CN = config.get('ca', 'CN')
 
-        #We never want to overwrite a key file,so do nothing if one exists
+        #We never want to overwrite a key file, so do nothing if one exists
         try:
             #Use the default passphrase 'certmgr' on the key
             with creat(ca_key_file(), mode=0666) as f_key:
@@ -1017,7 +1069,7 @@ def send_csr(csrobj):
     "Send csr to certmgr master"
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
-    log.info("Sending CSR %s for signing")
+    log.info("Sending CSR %s for signing", csrobj)
     try:
         with closing(socket.socket()) as sock:
             sock.connect((config.get('global', 'MasterAddress'),
@@ -1028,7 +1080,7 @@ def send_csr(csrobj):
             answer = sockfile.readlines()
         rval = answer[0].strip('\n')
         data = ''.join(answer[1:])
-    except socket.error, IndexError:
+    except (socket.error, IndexError):
         log.exception("Error communicating with master.")
         return
 
