@@ -24,6 +24,8 @@ from functools import wraps
 from collections import namedtuple
 import uuid
 import base64
+import dulwich
+import stat
 
 
 __all__ = ['StoreHandler',
@@ -257,6 +259,91 @@ class StoreHandler(object):
         def __str__(self):
             return "StoreHandler.svn()"
 
+    class git(StoreBase):
+        """Git StoreHandler plugin"""
+
+        def __init__(self):
+            # Dulwich stores the path literally, so if it is relative, the
+            # code is no longer thread safe. abspath works around this.
+            path = os.path.abspath(config.get('global', 'StoreDir'))
+            try:
+                self.repo = dulwich.repo.Repo(path)
+            except dulwich.errors.NotGitRepository:
+                try:
+                    os.makedirs(path)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                self.repo = dulwich.repo.Repo.init(path)
+
+        def setup(self):
+            client, path = self._get_transport_and_path(
+                            config.get('global', 'StoreUrl'))
+            remote_refs = client.fetch(path, self.repo)
+            self.repo.refs['HEAD'] = remote_refs['HEAD']
+            tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
+            self._unpack(tree)
+
+        def checkpoint(self):
+            pass
+            # git push
+
+        def fetch(self):
+            self.setup()
+
+        def write(self, certobj):
+            tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
+            blob = dulwich.objects.Blob.from_string(certobj.as_pem())
+            tree.add(0100644, certobj.CN, blob.id)
+            commit = dulwich.objects.Commit()
+            commit.tree = tree.id
+            commit.author = commit.committer = socket.getfqdn()
+            commit.commit_time = commit.author_time = int(time.time())
+            commit.author_timezone = dulwich.objects.parse_timezone("0000")
+            commit.commit_timezone = commit.author_timezone
+            commit.encoding = "UTF-8"
+            commit.message = u'Add certificate for "%s"' % (certobj.CN, )
+
+            self.repo.object_store.add_object(blob)
+            self.repo.object_store.add_object(tree)
+            self.repo.object_store.add_object(commit)
+            self.repo.refs['refs/heads/master'] = commit.id
+            self._unpack(tree)
+
+        def _unpack(self, tree, path='.'):
+            for name, mode, sha1 in tree.iteritems():
+                if stat.S_ISREG(mode):
+                    try:
+                        with creat(os.path.join(path, name), mode=0666) as f:
+                            f.write(self.repo.object_store.get_raw(sha1)[1])
+                            os.fchmod(f.fileno(), mode)
+                    except OSError, e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                elif stat.S_ISDIR(mode):
+                    try:
+                        # Don't bother with chmod. git doesn't store the mode.
+                        os.mkdir(os.path.join(path, name))
+                    except OSError, e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                    _unpack(self.repo.object_store[sha1],
+                            os.path.join(path, name))
+
+        def _get_transport_and_path(uri):
+            # Stolen from /usr/bin/dulwich
+            for handler, transport in (
+                    ("git://", dulwich.client.TCPGitClient),
+                    ("git+ssh://", dulwich.client.SSHGitClient)):
+                if uri.startswith(handler):
+                    host, path = uri[len(handler):].split("/", 1)
+                    return transport(host), "/" + path
+            # if its not git or git+ssh, try a local url..
+            return dulwich.client.SubprocessGitClient(), uri
+
+        def __str__(self):
+            return "StoreHandler.git()"
+
 
 class ExpiryNotifyHandler(object):
     """Class to handle different expiry notification methods"""
@@ -456,14 +543,14 @@ class CertExpiry(object):
     @logexception
     def expiry_action(self, cert, caoverwrite=False, notify=False):
         """Launched when expired cert timer completes.
-        
+
         If passed a certificate, attempt to refresh it by calling make_certs.
         If not, attempt to retrieve one from the store. If this doesn't work,
         call make_certs anyway. If a new cert was obtained, do nothing more.
 
         In all cases, call expiry_timer again to set a new timer with
         (hopefully) a new certificate.
-        
+
         """
 
         try:
@@ -573,9 +660,9 @@ class UUIDSequence(Sequence):
 def get_network_seq():
     """Attempt to connect to the network service running on the master and
     return a unique integer.
-    
+
     May throw many exceptions, including socket.error and ValueError.
-    
+
     """
 
     with closing(socket.socket()) as sock:
