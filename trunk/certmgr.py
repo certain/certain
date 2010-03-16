@@ -867,6 +867,11 @@ def make_certs(caoverwrite=False):
                 f_cacert.write(cacert.as_pem())
 
             os.rename(f_cacert.name, ca_cert_file())
+
+            with StoreHandler.dispatch(
+                    config.get('global', 'StoreType')) as store:
+                store.write(cacert)
+
         else:
             #Only create if it doesn't already exist
             try:
@@ -879,6 +884,9 @@ def make_certs(caoverwrite=False):
                                           config.get('ca', 'C'),
                                           config.getint('ca', 'CALifetime'))
                     f_cacert.write(cacert.as_pem())
+                with StoreHandler.dispatch(
+                    config.get('global', 'StoreType')) as store:
+                    store.write(cacert)
             except OSError, e:
                 if e.errno != errno.EEXIST: # File exists
                     raise
