@@ -414,10 +414,8 @@ class CertExpiry(object):
         self.tcrt.start()
 
         if self.cacert is not None:
-            #CA expiry mustn't be less than the expiry of the certs it issues
-            catimerlength = check_expiry(self.cacert) - (
-                config.getint('ca', 'ExpiryDeadline') +
-                config.getint('cert', 'CertLifetime'))
+            catimerlength = check_expiry(self.cacert) - config.getint(
+                'ca', 'ExpiryDeadline')
             log.debug("CA expiry timer waiting for %d seconds", catimerlength)
             if catimerlength <= config.getint('global', 'NotifyFrequency'):
                 catimerlength = config.getint('global', 'NotifyFrequency')
@@ -662,6 +660,8 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     califetime = check_expiry(cacert)
     if lifetime > califetime:
+        log.warn("Remaining CA lifetime shorter than CertLifetime. \
+            CertLifetime being clipped to %s", califetime)
         lifetime = califetime
 
     notafter = ASN1.ASN1_UTCTIME()
