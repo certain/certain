@@ -527,8 +527,8 @@ class UUIDSequence(Sequence):
 
 def get_network_seq():
     with closing(socket.socket()) as sock:
-        sock.connect((config.get('DEFAULT', 'MasterAddress'),
-                      config.getint('DEFAULT', 'MasterSeqPort')))
+        sock.connect((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterSeqPort')))
         return int(sock.recv(128))
 
 
@@ -741,14 +741,14 @@ def make_ca(key, CN, Email="CA@CertMgr",
 def ca_cert_file():
     """Return full path of CA cert file from config"""
 
-    return os.path.join(config.get('DEFAULT', 'CAPath'),
+    return os.path.join(config.get('global', 'CAPath'),
                      config.get('ca', 'CACert'))
 
 
 def ca_key_file():
     """Return full path of CA key file from config"""
 
-    return os.path.join(config.get('DEFAULT', 'CAPrivatePath'),
+    return os.path.join(config.get('global', 'CAPrivatePath'),
                       config.get('ca', 'CAKey'))
 
 
@@ -780,7 +780,7 @@ def csr_from_file(csrfilename):
 def cert_file(name):
     """Return full path of cert file from config"""
 
-    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CertPath'), name),
+    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
                      ".crt")
 
 
@@ -794,21 +794,21 @@ def cert_store_file(name):
 def key_file(name):
     """Return full path of key file from config"""
 
-    return "%s%s" % (os.path.join(config.get('DEFAULT', 'PrivatePath'), name),
+    return "%s%s" % (os.path.join(config.get('global', 'PrivatePath'), name),
                      ".key")
 
 
 def csr_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CertPath'), name),
+    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
                      ".csr")
 
 
 def csr_cache_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CSRCache'), name),
+    return "%s%s" % (os.path.join(config.get('global', 'CSRCache'), name),
                      ".csr")
 
 
@@ -832,14 +832,14 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
     if not config.read(configfile):
         raise ConfigParser.Error(
             "Unable to read Configuration File: %s" % (configfile, ))
-    log.setLevel(getattr(logging, config.get('DEFAULT', 'LogLevel')))
-    logconsole.setLevel(getattr(logging, config.get('DEFAULT', 'LogLevel')))
+    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
 
 def make_certs(caoverwrite=False):
     """Create CA certificates, key file and csr file"""
 
-    if config.getboolean('DEFAULT', 'IsMaster'):
+    if config.getboolean('global', 'IsMaster'):
         #Generate a CA if no certs exist
 
         log.info("Generating CA certificates for master")
@@ -1006,7 +1006,7 @@ class CSRChoice(object):
 def pending_csrs():
     """An interface to the set of pending CSRs."""
 
-    csrpath = config.get('DEFAULT', 'CSRCache')
+    csrpath = config.get('global', 'CSRCache')
     for csr_filename in os.listdir(csrpath):
         csrloc = os.path.join(csrpath, csr_filename)
         try:
@@ -1025,8 +1025,8 @@ def send_csr(csrobj):
     log.info("Sending CSR %s for signing")
     try:
         with closing(socket.socket()) as sock:
-            sock.connect((config.get('DEFAULT', 'MasterAddress'),
-                          config.getint('DEFAULT', 'MasterPort')))
+            sock.connect((config.get('global', 'MasterAddress'),
+                          config.getint('global', 'MasterPort')))
             sockfile = sock.makefile('rw', 0)
             sockfile.write(msg)
             sock.shutdown(socket.SHUT_WR)
@@ -1079,21 +1079,21 @@ def launch_daemon():
     except ConfigParser.Error:
         log.warn("PollTimer value not set in config", exc_info=sys.exc_info())
 
-    if config.get('DEFAULT', 'IsMaster'):
+    if config.get('global', 'IsMaster'):
         #Listen for incoming messages
         csrsock = socket.socket()
         csrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         csrsock.setblocking(0)
-        csrsock.bind((config.get('DEFAULT', 'MasterAddress'),
-                      config.getint('DEFAULT', 'MasterPort')))
+        csrsock.bind((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterPort')))
         csrsock.listen(5)
 
         # Listen for sequence requests
         seqsock = socket.socket()
         seqsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         seqsock.setblocking(0)
-        seqsock.bind((config.get('DEFAULT', 'MasterAddress'),
-                      config.getint('DEFAULT', 'MasterSeqPort')))
+        seqsock.bind((config.get('global', 'MasterAddress'),
+                      config.getint('global', 'MasterSeqPort')))
         seqsock.listen(5)
         sequence = UUIDSequence()
 
@@ -1141,12 +1141,12 @@ def check_paths():
                  ('CAPath', 0700),
                  ('CAPrivatePath', 0700)]:
         try:
-            os.makedirs(config.get('DEFAULT', path), mode)
+            os.makedirs(config.get('global', path), mode)
         except OSError, e:
             if e.errno == errno.EEXIST:
                 continue
             log.exception("Unable to create path: %s",
-                config.get('DEFAULT', path))
+                config.get('global', path))
 
 
 log = logging.getLogger('certmgr')
