@@ -59,7 +59,7 @@ def main():
 
     if options.get:
         with certmgr.StoreHandler.dispatch(
-                certmgr.config.get('global', 'StoreType')) as store:
+                certmgr.config.get('store', 'StoreType')) as store:
             store.fetch()
 
 if __name__ == "__main__":

@@ -1,23 +1,38 @@
-[global]
+[DEFAULT]
 LogLevel = CRITICAL
+#Root path for all certmgr sub-directories
 RootPath = /etc/certmgr
-CertPath = %(RootPath)s/certs
-PrivatePath = %(RootPath)s/private
+#Path to store CA certificate (master)
 CAPath = %(RootPath)s/CA
+#Path to store CA private key (master)
 CAPrivatePath = %(RootPath)s/CA/private
-CACert = certmgr.crt
-CAKey = certmgr.key
+#Path to store 'own' certificates
+CertPath = %(RootPath)s/certs
+#Path to store 'own' private keys
+PrivatePath = %(RootPath)s/private
+#Path to store received CSR files awaiting signing
 CSRCache = %(RootPath)s/CSRCache
-#Default hostname for Master should be set to certmgr
+#Is this computer the master? (boolean)
+IsMaster = 1
+#Default address & port for Master
 MasterAddress = certmgr
 MasterPort = 35182
+MasterSeqPort = 35183
+
+
+[master]
 #Should CSR's be automatically signed? (boolean)
 AutoSign = 0
-#Do we verify the CSR CommonName matches the requesting host?
-#Should the hostname be checked against Certificate CN? (boolean)
+#Require the CSR CommonName to match the requesting host? (boolean)
 HostVerify = 0
-#Set to 1 on the Master
-IsMaster = 0
+#Types of notifictions to send when CA is due to expire
+#Can be any/all of log, email
+ExpiryNotifiers = log, email
+#How often to send Notification messages for expired ca (seconds)
+NotifyFrequency = 86400
+
+
+[store]
 #StoreType can be: none, svn
 StoreType = svn
 StoreUrl = https://certmgr/certs
@@ -25,11 +40,17 @@ StoreDir = /etc/certmgr/store
 #Types of notifictions to send when certificates are due to expire
 #Can be log, email
 ExpiryNotifiers = log, email
-#How often to send Notification messages for expired certs (seconds)
-NotifyFrequency = 86400
+#How often to poll the store for new certificates
+PollTimer = 3600
+
 
 [ca]
-Bits = 4096
+#Name of CA certificate
+CACert = certmgr.crt
+#Name of CA key file
+CAKey = certmgr.key
+Bits = 2048
+Email = CA@CertMgr
 CN = CertMgr CA
 OU = CertMgr Unit
 O = CertMgr Org
@@ -41,9 +62,11 @@ CALifetime = 315360000
 # 60 * 60 * 24 * 7 = 7 days
 ExpiryDeadline = 608400
 
+
 [cert]
-Bits = 4096
+Bits = 2048
 #CN defaults to fqdn
+Email = certmgr@CertMgr
 OU = CertMgr Unit
 O = CertMgr Org
 L = CertMgr City
@@ -54,10 +77,7 @@ CertLifetime = 31536000
 # 60 * 60 * 24 * 7 = 7 days
 ExpiryDeadline = 608400
 
-[client]
-AutoSend = 1
 
 [email]
 SMTPServer = smtp.example.com
-ToAddress = admin@example.com
 FromAddress = certmgr@example.com

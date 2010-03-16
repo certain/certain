@@ -164,7 +164,7 @@ class StoreHandler(object):
         """Webdav StoreHandler plugin"""
 
         def __init__(self):
-            self.url = urlparse(config.get('global', 'StoreUrl'))
+            self.url = urlparse(config.get('store', 'StoreUrl'))
 
             if self.url.scheme == "https":
                 self.web = httplib.HTTPSConnection(self.url.netloc)
@@ -202,14 +202,14 @@ class StoreHandler(object):
             self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
                 True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
             self.lock = threading.Lock()
-            self.storedir = config.get('global', 'StoreDir')
+            self.storedir = config.get('store', 'StoreDir')
 
         def setup(self):
             """Perform an svn checkout"""
 
             log.debug("Setting up svn repository (co)")
             with self.lock:
-                self.client.checkout(config.get('global', 'StoreUrl'),
+                self.client.checkout(config.get('store', 'StoreUrl'),
                                      self.storedir)
 
         def checkpoint(self):
@@ -340,14 +340,14 @@ class MsgHandlerThread(threading.Thread):
         if CN != self.src:
             error_message = "Hostname: %s doesn't match certificate CN: %s" % (
                             self.src, CN)
-            if config.getboolean('global', 'HostVerify'):
+            if config.getboolean('master', 'HostVerify'):
                 log.error(error_message)
                 self.sock.send("FAIL\n" + error_message + "\n")
                 return
             else:
                 log.warn(error_message)
 
-        if config.getboolean('global', 'AutoSign'):
+        if config.getboolean('master', 'AutoSign'):
             log.info("Auto-signing enabled, signing certificate")
             try:
                 certobj = sign_csr(self.cakey, self.cacert, csr,
@@ -402,8 +402,8 @@ class CertExpiry(object):
             log.debug("Cert expiry timer waiting for %d seconds",
                 certtimerlength)
 
-        if certtimerlength <= config.getint('global', 'NotifyFrequency'):
-            certtimerlength = config.getint('global', 'NotifyFrequency')
+        if certtimerlength <= config.getint('master', 'NotifyFrequency'):
+            certtimerlength = config.getint('master', 'NotifyFrequency')
             log.debug("Resetting cert timer wait to %d seconds",
                       certtimerlength)
 
@@ -417,8 +417,8 @@ class CertExpiry(object):
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
             log.debug("CA expiry timer waiting for %d seconds", catimerlength)
-            if catimerlength <= config.getint('global', 'NotifyFrequency'):
-                catimerlength = config.getint('global', 'NotifyFrequency')
+            if catimerlength <= config.getint('master', 'NotifyFrequency'):
+                catimerlength = config.getint('master', 'NotifyFrequency')
                 log.debug("Resetting CA timer wait to %d seconds",
                     catimerlength)
             self.tca = threading.Timer(catimerlength, self.expiry_action,
@@ -446,7 +446,7 @@ class CertExpiry(object):
                     return
             elif notify:
                 for notifytype in config.get(
-                    'global', 'ExpiryNotifiers').replace(' ', '').split(','):
+                    'master', 'ExpiryNotifiers').replace(' ', '').split(','):
                     ExpiryNotifyHandler.dispatch(notifytype, cert)
 
             #Need to allow overwriting of CA
@@ -527,8 +527,8 @@ class UUIDSequence(Sequence):
 
 def get_network_seq():
     with closing(socket.socket()) as sock:
-        sock.connect((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterSeqPort')))
+        sock.connect((config.get('DEFAULT', 'MasterAddress'),
+                      config.getint('DEFAULT', 'MasterSeqPort')))
         return int(sock.recv(128))
 
 
@@ -741,15 +741,15 @@ def make_ca(key, CN, Email="CA@CertMgr",
 def ca_cert_file():
     """Return full path of CA cert file from config"""
 
-    return os.path.join(config.get('global', 'CAPath'),
-                     config.get('global', 'CACert'))
+    return os.path.join(config.get('DEFAULT', 'CAPath'),
+                     config.get('ca', 'CACert'))
 
 
 def ca_key_file():
     """Return full path of CA key file from config"""
 
-    return os.path.join(config.get('global', 'CAPrivatePath'),
-                      config.get('global', 'CAKey'))
+    return os.path.join(config.get('DEFAULT', 'CAPrivatePath'),
+                      config.get('ca', 'CAKey'))
 
 
 def key_from_file(keyfilename):
@@ -780,35 +780,35 @@ def csr_from_file(csrfilename):
 def cert_file(name):
     """Return full path of cert file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
+    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CertPath'), name),
                      ".crt")
 
 
 def cert_store_file(name):
     """Return full path of central store cert file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'StoreDir'), name),
+    return "%s%s" % (os.path.join(config.get('store', 'StoreDir'), name),
                      ".crt")
 
 
 def key_file(name):
     """Return full path of key file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'PrivatePath'), name),
+    return "%s%s" % (os.path.join(config.get('DEFAULT', 'PrivatePath'), name),
                      ".key")
 
 
 def csr_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
+    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CertPath'), name),
                      ".csr")
 
 
 def csr_cache_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CSRCache'), name),
+    return "%s%s" % (os.path.join(config.get('DEFAULT', 'CSRCache'), name),
                      ".csr")
 
 
@@ -832,14 +832,14 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
     if not config.read(configfile):
         raise ConfigParser.Error(
             "Unable to read Configuration File: %s" % (configfile, ))
-    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
-    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    log.setLevel(getattr(logging, config.get('DEFAULT', 'LogLevel')))
+    logconsole.setLevel(getattr(logging, config.get('DEFAULT', 'LogLevel')))
 
 
 def make_certs(caoverwrite=False):
     """Create CA certificates, key file and csr file"""
 
-    if config.getboolean('global', 'IsMaster'):
+    if config.getboolean('DEFAULT', 'IsMaster'):
         #Generate a CA if no certs exist
 
         log.info("Generating CA certificates for master")
@@ -873,7 +873,7 @@ def make_certs(caoverwrite=False):
             os.rename(f_cacert.name, ca_cert_file())
 
             with StoreHandler.dispatch(
-                    config.get('global', 'StoreType')) as store:
+                    config.get('store', 'StoreType')) as store:
                 store.write(cacert)
 
         else:
@@ -889,7 +889,7 @@ def make_certs(caoverwrite=False):
                                           config.getint('ca', 'CALifetime'))
                     f_cacert.write(cacert.as_pem())
                 with StoreHandler.dispatch(
-                    config.get('global', 'StoreType')) as store:
+                    config.get('store', 'StoreType')) as store:
                     store.write(cacert)
             except OSError, e:
                 if e.errno != errno.EEXIST: # File exists
@@ -923,8 +923,7 @@ def make_certs(caoverwrite=False):
 
     os.rename(f_csr.name, csr_file(CN))
 
-    if config.getboolean('client', 'AutoSend'):
-        return send_csr(csr)
+    return send_csr(csr)
 
 
 def check_expiry(certobj):
@@ -966,7 +965,7 @@ class CSRChoice(object):
 
         if (self.csr.get_subject().CN !=
                 os.path.splitext(os.path.basename(self.csr_filename))[0]):
-            if config.getboolean('global', 'HostVerify'):
+            if config.getboolean('master', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError
             else:
@@ -994,7 +993,7 @@ class CSRChoice(object):
             store.write(certobj)
         else:
             with StoreHandler.dispatch(
-                    config.get('global', 'StoreType')) as store:
+                    config.get('store', 'StoreType')) as store:
                 store.write(certobj)
 
     def remove(self):
@@ -1007,7 +1006,7 @@ class CSRChoice(object):
 def pending_csrs():
     """An interface to the set of pending CSRs."""
 
-    csrpath = config.get('global', 'CSRCache')
+    csrpath = config.get('DEFAULT', 'CSRCache')
     for csr_filename in os.listdir(csrpath):
         csrloc = os.path.join(csrpath, csr_filename)
         try:
@@ -1026,8 +1025,8 @@ def send_csr(csrobj):
     log.info("Sending CSR %s for signing")
     try:
         with closing(socket.socket()) as sock:
-            sock.connect((config.get('global', 'MasterAddress'),
-                          config.getint('global', 'MasterPort')))
+            sock.connect((config.get('DEFAULT', 'MasterAddress'),
+                          config.getint('DEFAULT', 'MasterPort')))
             sockfile = sock.makefile('rw', 0)
             sockfile.write(msg)
             sock.shutdown(socket.SHUT_WR)
@@ -1065,36 +1064,36 @@ def launch_daemon():
     """Start the certmgr listening socket and/or expiry timers"""
 
     cakey = cacert = None # Won't be used if auto-signing is turned off.
-    if config.getboolean('global', 'AutoSign'):
+    if config.getboolean('master', 'AutoSign'):
         cakey, cacert = check_cacerts()
 
-    store = StoreHandler.dispatch(config.get('global', 'StoreType'))
+    store = StoreHandler.dispatch(config.get('store', 'StoreType'))
     store.setup()
 
     certexpiry = CertExpiry(cakey, cacert, store)
     certexpiry.expiry_timer()
 
     try:
-        polling = Polling(store, config.getint('global', 'PollTimer'))
+        polling = Polling(store, config.getint('store', 'PollTimer'))
         polling.poll_timer()
     except ConfigParser.Error:
         log.warn("PollTimer value not set in config", exc_info=sys.exc_info())
 
-    if config.get('global', 'IsMaster'):
+    if config.get('DEFAULT', 'IsMaster'):
         #Listen for incoming messages
         csrsock = socket.socket()
         csrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         csrsock.setblocking(0)
-        csrsock.bind((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterPort')))
+        csrsock.bind((config.get('DEFAULT', 'MasterAddress'),
+                      config.getint('DEFAULT', 'MasterPort')))
         csrsock.listen(5)
 
         # Listen for sequence requests
         seqsock = socket.socket()
         seqsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         seqsock.setblocking(0)
-        seqsock.bind((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterSeqPort')))
+        seqsock.bind((config.get('DEFAULT', 'MasterAddress'),
+                      config.getint('DEFAULT', 'MasterSeqPort')))
         seqsock.listen(5)
         sequence = UUIDSequence()
 
@@ -1142,12 +1141,12 @@ def check_paths():
                  ('CAPath', 0700),
                  ('CAPrivatePath', 0700)]:
         try:
-            os.makedirs(config.get('global', path), mode)
+            os.makedirs(config.get('DEFAULT', path), mode)
         except OSError, e:
             if e.errno == errno.EEXIST:
                 continue
             log.exception("Unable to create path: %s",
-                config.get('global', path))
+                config.get('DEFAULT', path))
 
 
 log = logging.getLogger('certmgr')
