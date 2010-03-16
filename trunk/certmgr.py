@@ -780,36 +780,31 @@ def csr_from_file(csrfilename):
 def cert_file(name):
     """Return full path of cert file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
-                     ".crt")
+    return os.path.join(config.get('global', 'CertPath'), name) + ".crt"
 
 
 def cert_store_file(name):
     """Return full path of central store cert file from config"""
 
-    return "%s%s" % (os.path.join(config.get('store', 'StoreDir'), name),
-                     ".crt")
+    return os.path.join(config.get('store', 'StoreDir'), name) + ".crt"
 
 
 def key_file(name):
     """Return full path of key file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'PrivatePath'), name),
-                     ".key")
+    return os.path.join(config.get('global', 'PrivatePath'), name) + ".key"
 
 
 def csr_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CertPath'), name),
-                     ".csr")
+    return os.path.join(config.get('global', 'CertPath'), name) + ".csr"
 
 
 def csr_cache_file(name):
     """Return full path of csr file from config"""
 
-    return "%s%s" % (os.path.join(config.get('global', 'CSRCache'), name),
-                     ".csr")
+    return os.path.join(config.get('global', 'CSRCache'), name) + ".csr"
 
 
 def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
