@@ -1,4 +1,4 @@
-[DEFAULT]
+[global]
 LogLevel = CRITICAL
 #Root path for all certmgr sub-directories
 RootPath = /etc/certmgr
