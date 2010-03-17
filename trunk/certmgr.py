@@ -275,6 +275,7 @@ class StoreHandler(object):
                     if e.errno != errno.EEXIST:
                         raise
                 self.repo = dulwich.repo.Repo.init(path)
+                self.repo.refs['HEAD'] = 'ref: refs/heads/master'
 
         def setup(self):
             client, path = self._get_transport_and_path(
@@ -285,10 +286,10 @@ class StoreHandler(object):
                 self.repo.get_graph_walker(),
                 f.write, os.tmpfile().write)
             commit()
-            self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
-            self.repo.refs['HEAD'] = 'ref: refs/heads/master'
-            tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
-            self._unpack(tree, self.repo.path)
+            if remote_refs['HEAD'] not in self.repo.object_store:
+                self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
+                tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
+                self._unpack(tree, self.repo.path)
 
         def checkpoint(self):
             pass
