@@ -286,7 +286,11 @@ class StoreHandler(object):
                 self.repo.get_graph_walker(),
                 f.write, os.tmpfile().write)
             commit()
-            if remote_refs['HEAD'] not in self.repo.object_store:
+            try:
+                branch = self.repo.refs['refs/heads/master']
+            except KeyError:
+                branch = None
+            if not self.branch_has_object(branch, remote_refs['HEAD']):
                 self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
                 tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
                 self._unpack(tree, self.repo.path)
@@ -348,6 +352,19 @@ class StoreHandler(object):
                     return transport(host), "/" + path
             # if its not git or git+ssh, try a local url..
             return dulwich.client.SubprocessGitClient(), uri
+
+        def branch_has_object(self, commit, sha):
+            """Traverse the list of commits on this branch and return True if
+            we find sha."""
+
+            if not commit:
+                return False
+            if commit.id == sha:
+                return True
+            for parent in commit.parents:
+                if self.branch_has_object(parent, sha):
+                    return True
+            return False
 
         def __str__(self):
             return "StoreHandler.git()"
