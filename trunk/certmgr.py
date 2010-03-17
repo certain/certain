@@ -301,9 +301,11 @@ class StoreHandler(object):
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             blob = dulwich.objects.Blob.from_string(certobj.as_pem())
             tree.add(0100644, certobj.get_subject().CN + ".crt", blob.id)
+
             commit = dulwich.objects.Commit()
             commit.tree = tree.id
-            commit.author = commit.committer = config.get('ca', 'Email')
+            commit.author = '<' + config.get('ca', 'Email') + '>'
+            commit.committer = commit.author
             commit.commit_time = commit.author_time = int(time.time())
             commit.author_timezone = dulwich.objects.parse_timezone("0000")
             commit.commit_timezone = commit.author_timezone
