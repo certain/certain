@@ -285,7 +285,8 @@ class StoreHandler(object):
                 self.repo.get_graph_walker(),
                 f.write, os.tmpfile().write)
             commit()
-            self.repo.refs['HEAD'] = remote_refs['HEAD']
+            self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
+            self.repo.refs['HEAD'] = 'refs/heads/master'
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             self._unpack(tree, self.repo.path)
 
@@ -314,7 +315,7 @@ class StoreHandler(object):
             self.repo.object_store.add_object(blob)
             self.repo.object_store.add_object(tree)
             self.repo.object_store.add_object(commit)
-            self.repo.refs['HEAD'] = commit.id
+            self.repo.refs['refs/heads/master'] = commit.id
             self._unpack(tree, self.repo.path)
 
         def _unpack(self, tree, path='.'):
@@ -333,7 +334,8 @@ class StoreHandler(object):
                     _unpack(self.repo.object_store[sha1],
                             os.path.join(path, name))
 
-        def _get_transport_and_path(self, uri):
+        @staticmethod
+        def _get_transport_and_path(uri):
             # Stolen from /usr/bin/dulwich
             for handler, transport in (
                     ("git://", dulwich.client.TCPGitClient),
