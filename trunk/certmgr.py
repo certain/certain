@@ -279,7 +279,12 @@ class StoreHandler(object):
         def setup(self):
             client, path = self._get_transport_and_path(
                             config.get('global', 'StoreUrl'))
-            remote_refs = client.fetch(path, self.repo)
+            f, commit = self.repo.object_store.add_pack()
+            remote_refs = client.fetch_pack(path,
+                self.repo.object_store.determine_wants_all,
+                self.repo.graph_walker,
+                f.write, None)
+            commit()
             self.repo.refs['HEAD'] = remote_refs['HEAD']
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             self._unpack(tree)
@@ -294,15 +299,16 @@ class StoreHandler(object):
         def write(self, certobj):
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             blob = dulwich.objects.Blob.from_string(certobj.as_pem())
-            tree.add(0100644, certobj.CN, blob.id)
+            tree.add(0100644, certobj.get_subject().CN + ".crt", blob.id)
             commit = dulwich.objects.Commit()
             commit.tree = tree.id
-            commit.author = commit.committer = socket.getfqdn()
+            commit.author = commit.committer = config.get('ca', 'EmailAddress')
             commit.commit_time = commit.author_time = int(time.time())
             commit.author_timezone = dulwich.objects.parse_timezone("0000")
             commit.commit_timezone = commit.author_timezone
             commit.encoding = "UTF-8"
-            commit.message = u'Add certificate for "%s"' % (certobj.CN, )
+            commit.message = u'Add certificate for "%s"' % (
+                certobj.get_subject().CN, )
 
             self.repo.object_store.add_object(blob)
             self.repo.object_store.add_object(tree)
@@ -313,13 +319,9 @@ class StoreHandler(object):
         def _unpack(self, tree, path='.'):
             for name, mode, sha1 in tree.iteritems():
                 if stat.S_ISREG(mode):
-                    try:
-                        with creat(os.path.join(path, name), mode=0666) as f:
-                            f.write(self.repo.object_store.get_raw(sha1)[1])
-                            os.fchmod(f.fileno(), mode)
-                    except OSError, e:
-                        if e.errno != errno.EEXIST:
-                            raise
+                    with open(os.path.join(path, name), 'w') as f:
+                        f.write(self.repo.object_store.get_raw(sha1)[1])
+                        os.fchmod(f.fileno(), mode)
                 elif stat.S_ISDIR(mode):
                     try:
                         # Don't bother with chmod. git doesn't store the mode.
