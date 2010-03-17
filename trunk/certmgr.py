@@ -286,7 +286,7 @@ class StoreHandler(object):
                 f.write, os.tmpfile().write)
             commit()
             self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
-            self.repo.refs['HEAD'] = self.repo.refs['refs/heads/master']
+            self.repo.refs['HEAD'] = 'ref: refs/heads/master'
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             self._unpack(tree, self.repo.path)
 
@@ -310,7 +310,7 @@ class StoreHandler(object):
             commit.encoding = "UTF-8"
             commit.message = u'Add certificate for "%s"\n' % (
                 certobj.get_subject().CN, )
-            commit.parents = [self.repo.refs['HEAD']]
+            commit.parents = [self.repo.refs['refs/heads/master']]
 
             self.repo.object_store.add_object(blob)
             self.repo.object_store.add_object(tree)
