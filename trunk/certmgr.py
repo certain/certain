@@ -287,7 +287,7 @@ class StoreHandler(object):
             commit()
             self.repo.refs['HEAD'] = remote_refs['HEAD']
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
-            self._unpack(tree)
+            self._unpack(tree, self.repo.path)
 
         def checkpoint(self):
             pass
@@ -307,14 +307,15 @@ class StoreHandler(object):
             commit.author_timezone = dulwich.objects.parse_timezone("0000")
             commit.commit_timezone = commit.author_timezone
             commit.encoding = "UTF-8"
-            commit.message = u'Add certificate for "%s"' % (
+            commit.message = u'Add certificate for "%s"\n' % (
                 certobj.get_subject().CN, )
+            commit.parents = [self.repo.refs['HEAD']]
 
             self.repo.object_store.add_object(blob)
             self.repo.object_store.add_object(tree)
             self.repo.object_store.add_object(commit)
-            self.repo.refs['refs/heads/master'] = commit.id
-            self._unpack(tree)
+            self.repo.refs['HEAD'] = commit.id
+            self._unpack(tree, self.repo.path)
 
         def _unpack(self, tree, path='.'):
             for name, mode, sha1 in tree.iteritems():
