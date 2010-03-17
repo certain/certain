@@ -213,7 +213,7 @@ class StoreHandler(object):
             self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
                 True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
             self.lock = threading.Lock()
-            self.storedir = config.get('store', 'StoreDir')
+            self.storedir = config.get('global', 'StoreDir')
 
         def setup(self):
             """Perform an svn checkout"""
@@ -278,12 +278,12 @@ class StoreHandler(object):
 
         def setup(self):
             client, path = self._get_transport_and_path(
-                            config.get('global', 'StoreUrl'))
+                            config.get('store', 'StoreUrl'))
             f, commit = self.repo.object_store.add_pack()
             remote_refs = client.fetch_pack(path,
                 self.repo.object_store.determine_wants_all,
-                self.repo.graph_walker,
-                f.write, None)
+                self.repo.get_graph_walker(),
+                f.write, os.tmpfile().write)
             commit()
             self.repo.refs['HEAD'] = remote_refs['HEAD']
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
@@ -302,7 +302,7 @@ class StoreHandler(object):
             tree.add(0100644, certobj.get_subject().CN + ".crt", blob.id)
             commit = dulwich.objects.Commit()
             commit.tree = tree.id
-            commit.author = commit.committer = config.get('ca', 'EmailAddress')
+            commit.author = commit.committer = config.get('ca', 'Email')
             commit.commit_time = commit.author_time = int(time.time())
             commit.author_timezone = dulwich.objects.parse_timezone("0000")
             commit.commit_timezone = commit.author_timezone
@@ -332,7 +332,7 @@ class StoreHandler(object):
                     _unpack(self.repo.object_store[sha1],
                             os.path.join(path, name))
 
-        def _get_transport_and_path(uri):
+        def _get_transport_and_path(self, uri):
             # Stolen from /usr/bin/dulwich
             for handler, transport in (
                     ("git://", dulwich.client.TCPGitClient),
@@ -927,7 +927,7 @@ def cert_file(name):
 def cert_store_file(name):
     """Return full path of central store cert file from config"""
 
-    return os.path.join(config.get('store', 'StoreDir'), name) + ".crt"
+    return os.path.join(config.get('global', 'StoreDir'), name) + ".crt"
 
 
 def key_file(name):
@@ -1158,7 +1158,7 @@ def send_csr(csrobj):
     "Send csr to certmgr master"
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
-    log.info("Sending CSR %s for signing", csrobj)
+    log.info("Sending CSR %s.csr for signing", csrobj.get_subject().CN)
     try:
         with closing(socket.socket()) as sock:
             sock.connect((config.get('global', 'MasterAddress'),

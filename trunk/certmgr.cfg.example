@@ -12,6 +12,8 @@ CertPath = %(RootPath)s/certs
 PrivatePath = %(RootPath)s/private
 #Path to store received CSR files awaiting signing
 CSRCache = %(RootPath)s/CSRCache
+#Path of certificate store
+StoreDir = /etc/certmgr/store
 #Is this computer the master? (boolean)
 IsMaster = 1
 #Default address & port for Master
@@ -36,7 +38,6 @@ NotifyFrequency = 86400
 #StoreType can be: none, svn
 StoreType = svn
 StoreUrl = https://certmgr/certs
-StoreDir = /etc/certmgr/store
 #Types of notifictions to send when certificates are due to expire
 #Can be log, email
 ExpiryNotifiers = log, email
