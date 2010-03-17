@@ -287,7 +287,7 @@ class StoreHandler(object):
                 f.write, os.tmpfile().write)
             commit()
             try:
-                branch = self.repo.refs['refs/heads/master']
+                branch = self.object_store[self.repo.refs['refs/heads/master']]
             except KeyError:
                 branch = None
             if not self.branch_has_object(branch, remote_refs['HEAD']):
