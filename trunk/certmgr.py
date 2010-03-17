@@ -286,7 +286,7 @@ class StoreHandler(object):
                 f.write, os.tmpfile().write)
             commit()
             self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
-            self.repo.refs['HEAD'] = 'ref: refs/heads/master'
+            self.repo.refs['HEAD'] = self.repo.refs['refs/heads/master']
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             self._unpack(tree, self.repo.path)
 
