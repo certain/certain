@@ -293,7 +293,8 @@ class StoreHandler(object):
                 branch = None
             if not self._branch_has_object(branch, remote_refs['HEAD']):
                 self.repo.refs['refs/heads/master'] = remote_refs['HEAD']
-                tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
+                tree = self.repo.tree(
+                    self.repo.get_object(self.repo.head()).tree)
                 self._unpack(tree, self.repo.path)
 
         def checkpoint(self):
@@ -496,7 +497,7 @@ class MsgHandlerThread(threading.Thread):
                 dir=os.path.dirname(csr_cache_file(self.src)),
                 delete=False) as f_csr:
             log.info("Writing CSR to cache: %s", csr_cache_file(self.src))
-            f_csr.write(msg)
+            f_csr.write(pem)
 
             os.rename(f_csr.name, csr_cache_file(self.src))
         self.sock.send('OK\n')
@@ -1110,6 +1111,7 @@ class CSRChoice(object):
     def __init__(self, csr, csr_filename):
         self.csr = csr
         self.csr_filename = csr_filename
+        self.csr_basename = os.path.basename(self.csr_filename)
 
     def store(self, cakey=None, cacert=None, store=None):
         """Sign and store the CSR.
@@ -1125,7 +1127,7 @@ class CSRChoice(object):
         """
 
         if (self.csr.get_subject().CN !=
-                os.path.splitext(os.path.basename(self.csr_filename))[0]):
+                os.path.splitext(self.csr_basename)[0]):
             if config.getboolean('master', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError

@@ -3,6 +3,7 @@
 """Certificate Management System"""
 
 import certmgr
+import os
 from optparse import OptionParser
 
 
@@ -40,7 +41,7 @@ def main():
 
     if options.sign:
         with certmgr.StoreHandler.dispatch(
-                certmgr.config.get('global', 'StoreType')) as store:
+                certmgr.config.get('store', 'StoreType')) as store:
             for csr in certmgr.pending_csrs():
                 if not csr.csr:
                     dosign = raw_input(
@@ -48,8 +49,8 @@ def main():
                         ).strip().lower()
                 else:
                     dosign = raw_input(
-                            "Sign CSR %s (CN=%s) [N/y/d(elete)]? " % (
-                                csr.csr_filename,
+                            "Sign CSR: %s (CN=%s) [N/y/d(elete)]? " % (
+                                csr.csr_basename,
                                 csr.csr.get_subject().CN)
                         ).strip().lower()
                 if csr.csr and dosign == 'y':
