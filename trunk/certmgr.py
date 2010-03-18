@@ -363,7 +363,8 @@ class StoreHandler(object):
             if commit.id == sha:
                 return True
             for parent in commit.parents:
-                if self._branch_has_object(parent, sha):
+                if self._branch_has_object(
+                        self.repo.object_store[parent], sha):
                     return True
             return False
 
