@@ -286,6 +286,9 @@ class StoreHandler(object):
                 self.repo.get_graph_walker(),
                 f.write, os.tmpfile().write)
             commit()
+            # We need to decide if the HEAD is a descendant of the branch we
+            # are about to merge. If it is, merging again will destroy any
+            # commits
             try:
                 branch = self.repo.object_store[
                     self.repo.refs['refs/heads/master']]
@@ -298,8 +301,12 @@ class StoreHandler(object):
                 self._unpack(tree, self.repo.path)
 
         def checkpoint(self):
-            pass
-            # git push
+            client, path = self._get_transport_and_path(
+                            config.get('store', 'StoreUrl'))
+            # Will raise ChecksumMismatch if the server refuses to update
+            # because this is not a fast forward FIXME
+            client.send_pack(path, lambda new_refs: new_refs,
+                repo.object_store.generate_pack_contents)
 
         def fetch(self):
             self.setup()
