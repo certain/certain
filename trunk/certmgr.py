@@ -354,8 +354,7 @@ class StoreHandler(object):
             # if its not git or git+ssh, try a local url..
             return dulwich.client.SubprocessGitClient(), uri
 
-        @staticmethod
-        def _branch_has_object(commit, sha):
+        def _branch_has_object(self, commit, sha):
             """Traverse the list of commits on this branch and return True if
             we find sha."""
 
