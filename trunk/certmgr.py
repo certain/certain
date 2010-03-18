@@ -1111,7 +1111,6 @@ class CSRChoice(object):
     def __init__(self, csr, csr_filename):
         self.csr = csr
         self.csr_filename = csr_filename
-        self.csr_basename = os.path.basename(self.csr_filename)
 
     def store(self, cakey=None, cacert=None, store=None):
         """Sign and store the CSR.
@@ -1127,7 +1126,7 @@ class CSRChoice(object):
         """
 
         if (self.csr.get_subject().CN !=
-                os.path.splitext(self.csr_basename)[0]):
+                os.path.splitext(os.path.basename(self.csr_filename))[0]):
             if config.getboolean('master', 'HostVerify'):
                 log.error("Hostname doesn't match CN and HostVerify is set")
                 raise HostVerifyError

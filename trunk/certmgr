@@ -3,7 +3,7 @@
 """Certificate Management System"""
 
 import certmgr
-import os
+from os import path
 from optparse import OptionParser
 
 
@@ -50,7 +50,7 @@ def main():
                 else:
                     dosign = raw_input(
                             "Sign CSR: %s (CN=%s) [N/y/d(elete)]? " % (
-                                csr.csr_basename,
+                                path.basename(csr.csr_filename),
                                 csr.csr.get_subject().CN)
                         ).strip().lower()
                 if csr.csr and dosign == 'y':
