@@ -306,7 +306,7 @@ class StoreHandler(object):
             # Will raise ChecksumMismatch if the server refuses to update
             # because this is not a fast forward FIXME
             client.send_pack(path, lambda new_refs: new_refs,
-                repo.object_store.generate_pack_contents)
+                self.repo.object_store.generate_pack_contents)
 
         def fetch(self):
             self.setup()
