@@ -306,7 +306,8 @@ class StoreHandler(object):
             # Will raise ChecksumMismatch if the server refuses to update
             # because this is not a fast forward FIXME
             def get_changed_refs(old_refs):
-                return { "refs/heads/master": self.repo.refs['ref/heads/master'] }
+                return {"refs/heads/master":
+                        self.repo.refs['refs/heads/master']}
             client.send_pack(path, get_changed_refs,
                 self.repo.object_store.generate_pack_contents)
 
