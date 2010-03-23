@@ -276,6 +276,16 @@ class StoreHandler(object):
                         raise
                 self.repo = dulwich.repo.Repo.init(path)
                 self.repo.refs['HEAD'] = 'ref: refs/heads/master'
+            # Work around dulwich 0.50 bug.
+            @wraps(self.repo.object_store.add_object)
+            def new_add_object(self, object):
+                try:
+                    return self.repo.object_store.add_object(object)
+                except OSError, e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                    return self.repo.object_store.add_object(object)
+            self.repo.object_store.add_object = new_add_object
 
         def setup(self):
             client, path = self._get_transport_and_path(
@@ -284,7 +294,7 @@ class StoreHandler(object):
             remote_refs = client.fetch_pack(path,
                 self.repo.object_store.determine_wants_all,
                 self.repo.get_graph_walker(),
-                f.write, os.tmpfile().write)
+                f.write, open(os.devnull, 'w').write)
             commit()
             # We need to decide if the HEAD is a descendant of the branch we
             # are about to merge. If it is, merging again will destroy any
