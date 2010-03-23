@@ -485,17 +485,6 @@ class MsgHandlerThread(threading.Thread):
         csr = X509.load_request_string(pem)
         CN = csr.get_subject().CN
 
-        try:
-            pub = cert_from_file(cert_store_file(CN)).get_pubkey()
-        except IOError:
-            pass
-        else:
-            if not verify_data(sig, pem, pub):
-                log.error("Signature verification failed reading CSR from %s.",
-                          self.src)
-                self.sock.send("FAIL\nSignature verification failed.\n")
-                return
-
         if CN != self.src:
             error_message = "Hostname: %s doesn't match certificate CN: %s" % (
                             self.src, CN)
@@ -506,8 +495,21 @@ class MsgHandlerThread(threading.Thread):
             else:
                 log.warn(error_message)
 
-        if config.getboolean('master', 'AutoSign'):
-            log.info("Auto-signing enabled, signing certificate")
+        verified = False
+        try:
+            pub = cert_from_file(cert_store_file(CN)).get_pubkey()
+        except (IOError, X509Error):
+            pass
+        else:
+            if not verify_data(sig, pem, pub):
+                log.error("Signature verification failed reading CSR from %s.",
+                          self.src)
+                self.sock.send("FAIL\nSignature verification failed.\n")
+                return
+            verified = True
+
+        if verified or config.getboolean('master', 'AutoSign'):
+            log.info("Signing certificate")
             try:
                 certobj = sign_csr(self.cakey, self.cacert, csr,
                                         config.getint('cert', 'CertLifetime'))
