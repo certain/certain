@@ -72,14 +72,14 @@ def logexception(func):
 
 
 class HostVerifyError(Exception):
-    """Errors in Certificate Hostname Verification"""
+    """Errors in Certificate Hostname Verification."""
 
     def __init__(self, args="Hostname doesn't match certificate CN value"):
         Exception.__init__(self, args)
 
 
 class CACertError(Exception):
-    """Error opening CA Certificates"""
+    """Error opening CA Certificates."""
 
     def __init__(self, args="Errors opening CA Certificates"):
         Exception.__init__(self, args)
@@ -88,7 +88,7 @@ class CACertError(Exception):
 class LazyConfig(object):
     """Class which calls parse_config the first time it is referenced.
 
-    Allows user to override the default configfile value before it is used
+    Allows user to override the default configfile value before it is used.
 
     """
 
@@ -98,7 +98,7 @@ class LazyConfig(object):
 
 
 class StoreBase(object):
-    """Abstract base class for StoreHandler 'plugins'"""
+    """Abstract base class for StoreHandler 'plugins'."""
 
     __metaclass__ = abc.ABCMeta
 
@@ -131,7 +131,7 @@ class StoreBase(object):
 
 
 class StoreHandler(object):
-    """Class to handle different store types"""
+    """Class to handle different store types."""
 
     @classmethod
     def dispatch(cls, name):
@@ -147,12 +147,12 @@ class StoreHandler(object):
 
     @classmethod
     def storeerror(cls):
-        """Error method - default for getattr to deal with unknown StoreType"""
+        """Error method - default for getattr to deal with unknown StoreType."""
 
         log.warn("Unknown StoreType: " + cls.name)
 
     class none(StoreBase):
-        """'Empty' none StoreHandler plugin"""
+        """'Empty' none StoreHandler plugin."""
 
         def setup(self):
             pass
@@ -170,7 +170,7 @@ class StoreHandler(object):
             return "StoreHandler.none()"
 
     class webdav(StoreBase):
-        """Webdav StoreHandler plugin"""
+        """Webdav StoreHandler plugin."""
 
         def __init__(self):
             super(webdav, self).__init__()
@@ -191,7 +191,7 @@ class StoreHandler(object):
             pass
 
         def write(self, certobj):
-            """Puts certificate on a webdav server"""
+            """Puts certificate on a webdav server."""
 
             certfile = "%s/%s.crt" % (self.url.path, certobj.get_subject().CN)
             log.debug("Writing cert: %s to server: %s", certfile, self.web)
@@ -205,7 +205,7 @@ class StoreHandler(object):
             return "StoreHandler.webdav()"
 
     class svn(StoreBase):
-        """Subversion StoreHandler plugin"""
+        """Subversion StoreHandler plugin."""
 
         def __init__(self):
             super(svn, self).__init__()
@@ -216,7 +216,7 @@ class StoreHandler(object):
             self.storedir = config.get('global', 'StoreDir')
 
         def setup(self):
-            """Perform an svn checkout"""
+            """Perform an svn checkout."""
 
             log.debug("Setting up svn repository (co)")
             with self.lock:
@@ -224,20 +224,20 @@ class StoreHandler(object):
                                      self.storedir)
 
         def checkpoint(self):
-            """Perform an svn checkin"""
+            """Perform an svn checkin."""
 
             log.debug("Doing checkin of store")
             with self.lock:
                 self.client.checkin(self.storedir, "Adding certificates")
 
         def fetch(self):
-            """Perform an svn update"""
+            """Perform an svn update."""
 
             with self.lock:
                 self.client.update(self.storedir)
 
         def write(self, certobj):
-            """Write the certificate to the local svn working copy"""
+            """Write the certificate to the local svn working copy."""
 
             certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
             log.debug("Storing cert: %s", certfile)
@@ -260,7 +260,7 @@ class StoreHandler(object):
             return "StoreHandler.svn()"
 
     class git(StoreBase):
-        """Git StoreHandler plugin"""
+        """Git StoreHandler plugin."""
 
         def __init__(self):
             # Dulwich stores the path literally, so if it is relative, the
@@ -365,6 +365,11 @@ class StoreHandler(object):
 
         @staticmethod
         def _get_transport_and_path(uri):
+            """Parse a URI pointing to a git repository.
+
+            Returns a dulwich.client object.
+
+            """
             # Stolen from /usr/bin/dulwich
             for handler, transport in (
                     ("git://", dulwich.client.TCPGitClient),
@@ -394,7 +399,7 @@ class StoreHandler(object):
 
 
 class ExpiryNotifyHandler(object):
-    """Class to handle different expiry notification methods"""
+    """Class to handle different expiry notification methods."""
 
     @classmethod
     def dispatch(cls, name, certobj):
@@ -410,20 +415,20 @@ class ExpiryNotifyHandler(object):
 
     @classmethod
     def notifyerror(cls, certobj):
-        """Error method - default to deal with unknown Notify types"""
+        """Error method - default to deal with unknown Notify types."""
 
         log.warn("Unknown notification type: " + cls.name)
 
     @staticmethod
     def log(certobj):
-        """Log cert expiry messages"""
+        """Log cert expiry messages."""
 
         log.warn("Certificate is about to expire: %s",
                  certobj.get_subject().CN)
 
     @staticmethod
     def email(certobj):
-        """Email a warning about cert expiry"""
+        """Email a warning about cert expiry."""
 
         log.debug("Emailing about cert expiry")
         msg = MIMEText(
@@ -455,7 +460,7 @@ def closing_by_name(name):
 
 
 class MsgHandlerThread(threading.Thread):
-    """Handle incoming messages in separate threads"""
+    """Handle incoming messages in separate threads."""
 
     def __init__(self, store, sock, src, cakey, cacert):
         threading.Thread.__init__(self)
@@ -878,7 +883,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 def make_ca(key, CN, Email="CA@CertMgr",
             OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
-    """Generate a certificate authority
+    """Generate a certificate authority.
 
     CN: Common Name
     Email: Email address of certificate owner
@@ -889,7 +894,7 @@ def make_ca(key, CN, Email="CA@CertMgr",
     C: Country (UK)
     lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
 
-    Returns an X509 cert object
+    Returns an X509 cert object.
 
     """
 
@@ -926,26 +931,26 @@ def make_ca(key, CN, Email="CA@CertMgr",
 
 
 def ca_cert_file():
-    """Return full path of CA cert file from config"""
+    """Return full path of CA cert file from config."""
 
     return os.path.join(config.get('global', 'CAPath'),
                      config.get('ca', 'CACert'))
 
 
 def ca_key_file():
-    """Return full path of CA key file from config"""
+    """Return full path of CA key file from config."""
 
     return os.path.join(config.get('global', 'CAPrivatePath'),
                       config.get('ca', 'CAKey'))
 
 
 def key_from_file(keyfilename):
-    """Read a private key from file
+    """Read a private key from file.
 
     Note: M2Crypto provides no way to not set a passphrase on keys
-    By default, Certmgr uses the passphrase 'certmgr' throughout
+    By default, Certmgr uses the passphrase 'certmgr' throughout.
 
-    Returns an RSA object
+    Returns an RSA object.
 
     """
 
@@ -953,43 +958,43 @@ def key_from_file(keyfilename):
 
 
 def cert_from_file(certfilename):
-    """Read a certificate from file"""
+    """Read a certificate from file."""
 
     return X509.load_cert(certfilename)
 
 
 def csr_from_file(csrfilename):
-    """Read a certificate request from file"""
+    """Read a certificate request from file."""
 
     return X509.load_request(csrfilename)
 
 
 def cert_file(name):
-    """Return full path of cert file from config"""
+    """Return full path of cert file from config."""
 
     return os.path.join(config.get('global', 'CertPath'), name) + ".crt"
 
 
 def cert_store_file(name):
-    """Return full path of central store cert file from config"""
+    """Return full path of central store cert file from config."""
 
     return os.path.join(config.get('global', 'StoreDir'), name) + ".crt"
 
 
 def key_file(name):
-    """Return full path of key file from config"""
+    """Return full path of key file from config."""
 
     return os.path.join(config.get('global', 'PrivatePath'), name) + ".key"
 
 
 def csr_file(name):
-    """Return full path of csr file from config"""
+    """Return full path of csr file from config."""
 
     return os.path.join(config.get('global', 'CertPath'), name) + ".csr"
 
 
 def csr_cache_file(name):
-    """Return full path of csr file from config"""
+    """Return full path of csr file from config."""
 
     return os.path.join(config.get('global', 'CSRCache'), name) + ".csr"
 
@@ -1007,7 +1012,7 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
 
 def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
-    """Parse the config file into 'config' and set up logging"""
+    """Parse the config file into 'config' and set up logging."""
 
     global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
@@ -1019,7 +1024,7 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
 
 
 def make_certs(caoverwrite=False):
-    """Create CA certificates, key file and csr file"""
+    """Create CA certificates, key file and csr file."""
 
     if config.getboolean('global', 'IsMaster'):
         #Generate a CA if no certs exist
@@ -1109,7 +1114,7 @@ def make_certs(caoverwrite=False):
 
 
 def check_expiry(certobj):
-    """Return expiry time in seconds
+    """Return expiry time in seconds.
 
     certobj: OpenSSL X509 Object
 
@@ -1201,7 +1206,7 @@ def pending_csrs():
 
 
 def send_csr(csrobj):
-    "Send csr to certmgr master"
+    """Send csr to certmgr master."""
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
     log.info("Sending CSR %s.csr for signing", csrobj.get_subject().CN)
@@ -1243,7 +1248,7 @@ def send_csr(csrobj):
 
 
 def launch_daemon():
-    """Start the certmgr listening socket and/or expiry timers"""
+    """Start the certmgr listening socket and/or expiry timers."""
 
     cakey = cacert = None # Won't be used if auto-signing is turned off.
     if config.getboolean('master', 'AutoSign'):
@@ -1297,7 +1302,7 @@ def launch_daemon():
 
 
 def check_cacerts(recurse=True):
-    """Check for existence of CA cert and key file"""
+    """Check for existence of CA cert and key file."""
 
     try:
         cakey = key_from_file(ca_key_file())
@@ -1331,7 +1336,7 @@ def check_paths():
                 config.get('global', path))
 
 
-log = logging.getLogger('certmgr')
+log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
 logformat = logging.Formatter('%(levelname)s %(message)s')
 logconsole = logging.StreamHandler()
