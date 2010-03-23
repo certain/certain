@@ -279,13 +279,13 @@ class StoreHandler(object):
             # Work around dulwich 0.50 bug.
             def try_again(func):
                 @wraps(func)
-                def new_add_object(self, object):
+                def new_add_object(*args, **kwargs):
                     try:
-                        return func(object)
+                        return func(*args, **kwargs)
                     except OSError, e:
                         if e.errno != errno.EEXIST:
                             raise
-                        return func(object)
+                        return func(*args, **kwargs)
                 return new_add_object
             self.repo.object_store.add_object = try_again(
                 self.repo.object_store.add_object)
