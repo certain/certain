@@ -277,15 +277,18 @@ class StoreHandler(object):
                 self.repo = dulwich.repo.Repo.init(path)
                 self.repo.refs['HEAD'] = 'ref: refs/heads/master'
             # Work around dulwich 0.50 bug.
-            @wraps(self.repo.object_store.add_object)
-            def new_add_object(self, object):
-                try:
-                    return self.repo.object_store.add_object(object)
-                except OSError, e:
-                    if e.errno != errno.EEXIST:
-                        raise
-                    return self.repo.object_store.add_object(object)
-            self.repo.object_store.add_object = new_add_object
+            def try_again(func):
+                @wraps(func)
+                def new_add_object(self, object):
+                    try:
+                        return func(object)
+                    except OSError, e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                        return func(object)
+                return new_add_object
+            self.repo.object_store.add_object = try_again(
+                self.repo.object_store.add_object)
 
         def setup(self):
             client, path = self._get_transport_and_path(
@@ -1250,9 +1253,7 @@ def send_csr(csrobj):
 def launch_daemon():
     """Start the certmgr listening socket and/or expiry timers."""
 
-    cakey = cacert = None # Won't be used if auto-signing is turned off.
-    if config.getboolean('master', 'AutoSign'):
-        cakey, cacert = check_cacerts()
+    cakey, cacert = check_cacerts()
 
     store = StoreHandler.dispatch(config.get('store', 'StoreType'))
     store.setup()
