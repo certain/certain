@@ -604,12 +604,12 @@ class CertExpiry(object):
             certtimerlength = check_expiry(cert) - config.getint(
                 'cert', 'ExpiryDeadline')
             log.debug("Cert expiry timer waiting for %s",
-                datetime.timedelta(certtimerlength))
+                datetime.timedelta(seconds=certtimerlength))
 
         if certtimerlength <= config.getint('master', 'NotifyFrequency'):
             certtimerlength = config.getint('master', 'NotifyFrequency')
             log.debug("Resetting cert timer wait to %s",
-                      datetime.timedelta(certtimerlength))
+                      datetime.timedelta(seconds=certtimerlength))
 
         if self.tcrt:
             self.tcrt.cancel()
@@ -623,11 +623,11 @@ class CertExpiry(object):
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
             log.debug("CA expiry timer waiting for %s",
-                datetime.timedelta(catimerlength))
+                datetime.timedelta(seconds=catimerlength))
             if catimerlength <= config.getint('master', 'NotifyFrequency'):
                 catimerlength = config.getint('master', 'NotifyFrequency')
                 log.debug("Resetting CA timer wait to %s",
-                    datetime.timedelta(catimerlength))
+                    datetime.timedelta(seconds=catimerlength))
             if self.tca:
                 self.tca.cancel()
             self.tca = threading.Timer(catimerlength, self.expire_ca)
