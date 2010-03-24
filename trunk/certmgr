@@ -63,5 +63,8 @@ def main():
                 certmgr.config.get('store', 'StoreType')) as store:
             store.fetch()
 
+    if not any([options.makecerts, options.daemon, options.sign, options.get]):
+        parser.error("Must specify one of -m, -d, -s, -g")
+
 if __name__ == "__main__":
     main()
