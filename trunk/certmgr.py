@@ -74,6 +74,18 @@ def logexception(func):
     return run
 
 
+def synchronised(lock):
+    """Synchronisation decorator."""
+
+    def wrap(f):
+        @wraps(f)
+        def newFunction(*args, **kw):
+            with lock:
+                return f(*args, **kw)
+        return newFunction
+    return wrap
+
+
 class HostVerifyError(Exception):
     """Errors in Certificate Hostname Verification."""
 
@@ -295,6 +307,8 @@ class StoreHandler(object):
     class git(StoreBase):
         """Git StoreHandler plugin."""
 
+        lock = threading.RLock()
+
         def __init__(self):
             # Dulwich stores the path literally, so if it is relative, the
             # code is no longer thread safe. abspath works around this.
@@ -323,6 +337,7 @@ class StoreHandler(object):
             self.repo.object_store.add_object = try_again(
                 self.repo.object_store.add_object)
 
+        @synchronised(lock)
         def setup(self):
             client, path = self._get_transport_and_path(
                             config.get('store', 'StoreUrl'))
@@ -346,6 +361,7 @@ class StoreHandler(object):
                     self.repo.get_object(self.repo.head()).tree)
                 self._unpack(tree, self.repo.path)
 
+        @synchronised(lock)
         def checkpoint(self):
             client, path = self._get_transport_and_path(
                             config.get('store', 'StoreUrl'))
@@ -354,12 +370,15 @@ class StoreHandler(object):
             def get_changed_refs(old_refs):
                 return {"refs/heads/master":
                         self.repo.refs['refs/heads/master']}
+            assert get_changed_refs(None)['refs/heads/master']
             client.send_pack(path, get_changed_refs,
                 self.repo.object_store.generate_pack_contents)
 
+        @synchronised(lock)
         def fetch(self):
             self.setup()
 
+        @synchronised(lock)
         def write(self, certobj):
             tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
             blob = dulwich.objects.Blob.from_string(certobj.as_pem())
