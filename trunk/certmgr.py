@@ -85,6 +85,33 @@ class CACertError(Exception):
         Exception.__init__(self, args)
 
 
+class VerboseExceptionFormatter(logging.Formatter):
+    def formatException(self, ei):
+        stack = []
+        tb = ei[2]
+
+        while tb:
+            stack.append(tb.tb_frame)
+            tb = tb.tb_next
+        s = super(VerboseExceptionFormatter, self).formatException(self, ei)
+        s += "\nLocals by frame, innermost last"
+        for frame in stack:
+            s += "\nFrame %s in %s at line %s\n" % (frame.f_code.co_name,
+                                                  frame.f_code.co_filename,
+                                                  frame.f_lineno)
+            for key, value in frame.f_locals.items():
+                s += "\t%20s = " % key
+                #We have to be careful not to cause a new error in our error
+                #printer! Calling str() on an unknown object could cause an
+                #error we don't want.
+                try:
+                    s += value
+                except:
+                    s += "<ERROR WHILE PRINTING VALUE>"
+                s += '\n'
+        return s
+
+
 class LazyConfig(object):
     """Class which calls parse_config the first time it is referenced.
 
@@ -1341,7 +1368,7 @@ def check_paths():
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
-logformat = logging.Formatter('%(levelname)s %(message)s')
+logformat = logging.VerboseExceptionFormatter('%(levelname)s %(message)s')
 logconsole = logging.StreamHandler()
 logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
