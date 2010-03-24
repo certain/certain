@@ -26,6 +26,7 @@ import uuid
 import base64
 import dulwich
 import stat
+import datetime
 
 
 __all__ = ['StoreHandler',
@@ -602,13 +603,13 @@ class CertExpiry(object):
         if cert:
             certtimerlength = check_expiry(cert) - config.getint(
                 'cert', 'ExpiryDeadline')
-            log.debug("Cert expiry timer waiting for %d seconds",
-                certtimerlength)
+            log.debug("Cert expiry timer waiting for %s",
+                datetime.timedelta(certtimerlength))
 
         if certtimerlength <= config.getint('master', 'NotifyFrequency'):
             certtimerlength = config.getint('master', 'NotifyFrequency')
-            log.debug("Resetting cert timer wait to %d seconds",
-                      certtimerlength)
+            log.debug("Resetting cert timer wait to %s",
+                      datetime.timedelta(certtimerlength))
 
         if self.tcrt:
             self.tcrt.cancel()
@@ -621,11 +622,12 @@ class CertExpiry(object):
         if self.cacert is not None:
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
-            log.debug("CA expiry timer waiting for %d seconds", catimerlength)
+            log.debug("CA expiry timer waiting for %s",
+                datetime.timedelta(catimerlength))
             if catimerlength <= config.getint('master', 'NotifyFrequency'):
                 catimerlength = config.getint('master', 'NotifyFrequency')
-                log.debug("Resetting CA timer wait to %d seconds",
-                    catimerlength)
+                log.debug("Resetting CA timer wait to %s",
+                    datetime.timedelta(catimerlength))
             if self.tca:
                 self.tca.cancel()
             self.tca = threading.Timer(catimerlength, self.expire_ca)
