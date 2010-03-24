@@ -86,6 +86,7 @@ class CACertError(Exception):
 
 
 class VerboseExceptionFormatter(logging.Formatter):
+
     def formatException(self, ei):
         stack = []
         tb = ei[2]
@@ -93,7 +94,7 @@ class VerboseExceptionFormatter(logging.Formatter):
         while tb:
             stack.append(tb.tb_frame)
             tb = tb.tb_next
-        s = super(VerboseExceptionFormatter, self).formatException(self, ei)
+        s = logging.Formatter.formatException(self, ei)
         s += "\nLocals by frame, innermost last"
         for frame in stack:
             s += "\nFrame %s in %s at line %s\n" % (frame.f_code.co_name,
@@ -105,8 +106,10 @@ class VerboseExceptionFormatter(logging.Formatter):
                 #printer! Calling str() on an unknown object could cause an
                 #error we don't want.
                 try:
-                    s += value
-                except:
+                    s += str(type(value)) + ' '
+                    s += str(value)
+                except Exception, e:
+                    s += str(e)
                     s += "<ERROR WHILE PRINTING VALUE>"
                 s += '\n'
         return s
@@ -174,7 +177,7 @@ class StoreHandler(object):
 
     @classmethod
     def storeerror(cls):
-        """Error method - default for getattr to deal with unknown StoreType."""
+        """Error method. Default for getattr to deal with unknown StoreType."""
 
         log.warn("Unknown StoreType: " + cls.name)
 
@@ -525,7 +528,7 @@ class MsgHandlerThread(threading.Thread):
         verified = False
         try:
             pub = cert_from_file(cert_store_file(CN)).get_pubkey()
-        except (IOError, X509Error):
+        except (IOError, X509.X509Error):
             pass
         else:
             if not verify_data(sig, pem, pub):
@@ -1368,7 +1371,7 @@ def check_paths():
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.CRITICAL)
-logformat = logging.VerboseExceptionFormatter('%(levelname)s %(message)s')
+logformat = VerboseExceptionFormatter('%(levelname)s %(message)s')
 logconsole = logging.StreamHandler()
 logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
