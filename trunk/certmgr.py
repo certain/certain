@@ -703,7 +703,8 @@ class Polling(object):
         """Set up a timer to check the store."""
 
         if self.polltime:
-            log.debug("Starting poll timer for %d seconds", self.polltime)
+            log.debug("Starting poll timer for %s",
+                datetime.timedelta(seconds=self.polltime))
             self.timer = threading.Timer(self.polltime, self.poll_action)
             self.timer.daemon = True
             self.timer.start()
@@ -917,7 +918,8 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     califetime = check_expiry(cacert)
     if lifetime > califetime:
         log.warn("Remaining CA lifetime shorter than CertLifetime. \
-            CertLifetime being clipped to %s", califetime)
+            CertLifetime being clipped to %s", 
+            datetime.timedelta(seconds=califetime))
         lifetime = califetime
 
     notafter = ASN1.ASN1_UTCTIME()
