@@ -477,6 +477,7 @@ Please update your CA certificate!""" % (certobj.get_subject().CN,
 
         smtp = smtplib.SMTP(config.get('email', 'SMTPServer'))
         smtp.sendmail(msg['From'], msg['To'], msg.as_string())
+        smtp.quit()
 
 
 def closing_by_name(name):
