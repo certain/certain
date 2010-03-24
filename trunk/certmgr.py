@@ -648,11 +648,9 @@ class CertExpiry(object):
         """
 
         try:
-            if notify:
-                for notifytype in config.get(
-                    'master', 'ExpiryNotifiers').replace(' ', '').split(','):
-                    ExpiryNotifyHandler.dispatch(notifytype, self.cacert)
-
+            for notifytype in config.get(
+                'master', 'ExpiryNotifiers').replace(' ', '').split(','):
+                ExpiryNotifyHandler.dispatch(notifytype, self.cacert)
             self.cacert = make_ca()
         finally:
             self.expiry_timer()
