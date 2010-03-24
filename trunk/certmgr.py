@@ -33,7 +33,8 @@ __all__ = ['StoreHandler',
            'pending_csrs',
            'sign_csr',
            'send_csr',
-           'make_certs',
+           'make_ca',
+           'make_cert',
            'launch_daemon',
            'parse_config',
            'check_paths',
@@ -48,7 +49,7 @@ __all__ = ['StoreHandler',
            'csr_file',
            'csr_cache_file',
            'check_cacerts',
-           'make_ca',
+           'make_cacert',
            'make_key',
            'make_csr',
            'check_expiry']
@@ -589,6 +590,8 @@ class CertExpiry(object):
         """
 
         certtimerlength = 0
+        #Always try to get a cert straight away, otherwise it will be at
+        #least <NotifyFrequency> before one comes into being
         if not cert:
             self.store.fetch()
             try:
@@ -597,7 +600,7 @@ class CertExpiry(object):
             except (X509.X509Error, IOError):
                 log.exception("Certificate missing")
                 try:
-                    cert = make_certs()
+                    cert = make_cert()
                 except Exception:
                     pass
         if cert:
@@ -619,7 +622,7 @@ class CertExpiry(object):
         self.tcrt.daemon = True
         self.tcrt.start()
 
-        if self.cacert is not None:
+        if self.cacert is not None and config.get('global', 'IsMaster'):
             catimerlength = check_expiry(self.cacert) - config.getint(
                 'ca', 'ExpiryDeadline')
             log.debug("CA expiry timer waiting for %s",
@@ -640,7 +643,7 @@ class CertExpiry(object):
         """Launched when expired ca timer completes.
 
         Trigger the Notify Handler to send any configured notifications, then
-        call make_certs to generate a new CA.
+        call make_ca to generate a new CA.
 
         """
 
@@ -650,7 +653,7 @@ class CertExpiry(object):
                     'master', 'ExpiryNotifiers').replace(' ', '').split(','):
                     ExpiryNotifyHandler.dispatch(notifytype, self.cacert)
 
-            self.cacert = make_certs(ca=True)
+            self.cacert = make_ca()
         finally:
             self.expiry_timer()
 
@@ -658,9 +661,9 @@ class CertExpiry(object):
     def expire_cert(self, cert):
         """Launched when expired cert timer completes.
 
-        If passed a certificate, attempt to refresh it by calling make_certs.
+        If passed a certificate, attempt to refresh it by calling make_cert.
         If not, attempt to retrieve one from the store. If this doesn't work,
-        call make_certs anyway. If a new cert was obtained, do nothing more.
+        call make_cert anyway. If a new cert was obtained, do nothing more.
 
         In all cases, call expiry_timer again to set a new timer with
         (hopefully) a new certificate.
@@ -681,7 +684,7 @@ class CertExpiry(object):
 
             #Need to allow overwriting of CA
             #Re-sending of CSR will happen for free
-            cert = make_certs()
+            cert = make_cert()
         finally:
             self.expiry_timer(cert)
 
@@ -937,10 +940,10 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     return cert
 
 
-def make_ca(key, CN, Email="CA@CertMgr",
+def make_cacert(key, CN, Email="CA@CertMgr",
             OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
             ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
-    """Generate a certificate authority.
+    """Generate a self-signed CA certificate.
 
     CN: Common Name
     Email: Email address of certificate owner
@@ -951,7 +954,7 @@ def make_ca(key, CN, Email="CA@CertMgr",
     C: Country (UK)
     lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
 
-    Returns an X509 cert object.
+    Returns an X509 (CA) cert object.
 
     """
 
@@ -1002,7 +1005,7 @@ def ca_key_file():
 
 
 def ca_csr_file():
-    """Return full path of CA cert file from config."""
+    """Return full path of CA CSR file from config."""
 
     return os.path.join(config.get('global', 'CAPath'),
                      config.get('ca', 'CACSR'))
@@ -1087,91 +1090,60 @@ def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
     logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
 
-def make_certs(ca=False):
-    """Create CA certificates, key file and csr file."""
+def make_ca():
+    """Generate a CA and CSR file for the master."""
 
-    if config.getboolean('global', 'IsMaster'):
-        #Generate a CA if no certs exist
+    log.info("Generating CA certificates for master")
+    CN = config.get('ca', 'CN')
 
-        log.info("Generating CA certificates for master")
-        CN = config.get('ca', 'CN')
+    #We never want to overwrite a key file, so load from file if one exists
+    try:
+        #Use the default passphrase 'certmgr' on the key
+        with creat(ca_key_file(), mode=0666) as f_key:
+            key = make_key(config.getint('ca', 'Bits'))
+            f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
+    except OSError, e:
+        if e.errno != errno.EEXIST: # File exists
+            raise
+        key = key_from_file(ca_key_file())
 
-        #We never want to overwrite a key file, so do nothing if one exists
-        try:
-            #Use the default passphrase 'certmgr' on the key
-            with creat(ca_key_file(), mode=0666) as f_key:
-                key = make_key(config.getint('ca', 'Bits'))
-                f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
-        except OSError, e:
-            if e.errno != errno.EEXIST: # File exists
-                raise
-            key = key_from_file(ca_key_file())
+    with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(ca_cert_file()),
+            delete=False) as f_cacert:
+        cacert = make_cacert(key, CN, config.get('ca', 'Email'),
+                            config.get('ca', 'OU'),
+                            config.get('ca', 'O'),
+                            config.get('ca', 'L'),
+                            config.get('ca', 'ST'),
+                            config.get('ca', 'C'),
+                            config.getint('ca', 'CALifetime'))
+        f_cacert.write(cacert.as_pem())
 
-        if ca:
-            #We want to overwrite the CA
-            with tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(ca_cert_file()),
-                    delete=False) as f_cacert:
-                cacert = make_ca(key, CN, config.get('ca', 'Email'),
-                                      config.get('ca', 'OU'),
-                                      config.get('ca', 'O'),
-                                      config.get('ca', 'L'),
-                                      config.get('ca', 'ST'),
-                                      config.get('ca', 'C'),
-                                      config.getint('ca', 'CALifetime'))
-                f_cacert.write(cacert.as_pem())
+    os.rename(f_cacert.name, ca_cert_file())
 
-            os.rename(f_cacert.name, ca_cert_file())
+    #Also create a CSR in case the CA needs signing manually
+    with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(ca_csr_file()),
+            delete=False) as f_cacsr:
+        cacsr = make_csr(key, CN, config.get('ca', 'Email'),
+                         config.get('ca', 'OU'),
+                         config.get('ca', 'O'),
+                         config.get('ca', 'L'),
+                         config.get('ca', 'ST'),
+                         config.get('ca', 'C'))
+        f_cacsr.write(cacsr.as_pem())
 
-            #Also create a CSR in case the CA needs signing manually
-            with tempfile.NamedTemporaryFile(
-                    dir=os.path.dirname(ca_csr_file()),
-                    delete=False) as f_cacsr:
-                cacsr = make_csr(key, CN, config.get('ca', 'Email'),
-                                      config.get('ca', 'OU'),
-                                      config.get('ca', 'O'),
-                                      config.get('ca', 'L'),
-                                      config.get('ca', 'ST'),
-                                      config.get('ca', 'C'))
-                f_cacsr.write(cacsr.as_pem())
+    os.rename(f_cacsr.name, ca_csr_file())
 
-            os.rename(f_cacsr.name, ca_csr_file())
+    with StoreHandler.dispatch(
+        config.get('store', 'StoreType')) as store:
+        store.write(cacert)
 
-            with StoreHandler.dispatch(
-                    config.get('store', 'StoreType')) as store:
-                store.write(cacert)
+    return cacert
 
-        else:
-            #Only create if it doesn't already exist
-            try:
-                with creat(ca_cert_file(), mode=0666) as f_cacert:
-                    cacert = make_ca(key, CN, config.get('ca', 'Email'),
-                                          config.get('ca', 'OU'),
-                                          config.get('ca', 'O'),
-                                          config.get('ca', 'L'),
-                                          config.get('ca', 'ST'),
-                                          config.get('ca', 'C'),
-                                          config.getint('ca', 'CALifetime'))
-                    f_cacert.write(cacert.as_pem())
 
-                #Also create a CSR in case the CA needs signing manually
-                with creat(ca_csr_file(), mode=0666) as f_cacsr:
-                    cacsr = make_csr(key, CN, config.get('ca', 'Email'),
-                                     config.get('ca', 'OU'),
-                                     config.get('ca', 'O'),
-                                     config.get('ca', 'L'),
-                                     config.get('ca', 'ST'),
-                                     config.get('ca', 'C'))
-                    f_cacsr.write(cacsr.as_pem())
-
-                with StoreHandler.dispatch(
-                    config.get('store', 'StoreType')) as store:
-                    store.write(cacert)
-            except OSError, e:
-                if e.errno != errno.EEXIST: # File exists
-                    raise
-
-        return cacert
+def make_cert():
+    """Create Certificate key and csr files, then send to master."""
 
     #Make client key and CSR if needed
     CN = config.get('cert', 'CN')
@@ -1400,7 +1372,7 @@ def check_cacerts(recurse=True):
     except IOError, e:
         if e.errno != errno.ENOENT:
             raise
-        make_certs()
+        make_ca()
         if recurse:
             return check_cacerts(False)
         else:

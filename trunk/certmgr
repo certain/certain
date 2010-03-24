@@ -13,9 +13,9 @@ def main():
                       dest="config_file",
                       help="Specifies the config file to use \
                       if unset, defaults to /etc/certmgr/certmgr.cfg")
-    parser.add_option("-m", "--makecerts",
-                      action="store_true", dest="makecerts",
-                      help="Setup certificates on your system.")
+    parser.add_option("-m", "--makecert",
+                      action="store_true", dest="makecert",
+                      help="Setup a certificate and key on this system.")
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
                       help="Start CertMgr Daemon.")
@@ -33,8 +33,8 @@ def main():
 
     certmgr.check_paths()
 
-    if options.makecerts:
-        certmgr.make_certs()
+    if options.makecert:
+        certmgr.make_cert()
 
     if options.daemon:
         certmgr.launch_daemon()
@@ -63,8 +63,8 @@ def main():
                 certmgr.config.get('store', 'StoreType')) as store:
             store.fetch()
 
-    if not any([options.makecerts, options.daemon, options.sign, options.get]):
-        parser.error("Must specify one of -m, -d, -s, -g")
+    if not any([options.makecert, options.daemon, options.sign, options.get]):
+        parser.error("Must specify one of -m, -d, -s, -g or -h (--help)")
 
 if __name__ == "__main__":
     main()
