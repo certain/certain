@@ -934,8 +934,8 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
 
     califetime = check_expiry(cacert)
     if lifetime > califetime:
-        log.warn("Remaining CA lifetime shorter than CertLifetime. \
-            CertLifetime being clipped to %s", 
+        log.warn("Remaining CA lifetime shorter than CertLifetime. "
+            "CertLifetime being clipped to %s",
             datetime.timedelta(seconds=califetime))
         lifetime = califetime
 
