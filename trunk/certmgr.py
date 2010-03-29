@@ -490,7 +490,7 @@ class StoreHandler(object):
                     #Readline should ensure no accidental trailing newlines
                     self.lastcheck = f.readline()
                 self.lastcheck = float(self.lastcheck)
-            except (OSError, ValueError, TypeError):
+            except (IOError, ValueError, TypeError):
                 #If we got an exception, lastcheck may be unset or not a float
                 #Set it to 0 (epoch) to force a cert update
                 self.lastcheck = 0
@@ -534,7 +534,7 @@ class StoreHandler(object):
                     f.write(str(now))
 
                 os.rename(f.name, self.lastcheckfile)
-            except OSError:
+            except (IOError, OSError):
                 #Don't care if the lastcheck write fails
                 pass
 
