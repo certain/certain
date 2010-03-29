@@ -472,11 +472,12 @@ class StoreHandler(object):
                 return self.items
 
         def __init__(self):
-            ###FIXME
-            #self.storedir = config.get('global', 'StoreDir')
-            self.storedir = "/tmp/fetch"
+            ###FIXME - same folder is used for write and fetch
+            #bad things could happen!
+            self.storedir = config.get('global', 'StoreDir')
             self.lock = threading.Lock()
             self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
+            self.lastcheck = None
 
         def setup(self):
             self.url = urlparse(config.get('store', 'StoreUrl'))
@@ -484,6 +485,21 @@ class StoreHandler(object):
                 self.web = httpslib.HTTPSConnection(self.url.netloc)
             else:
                 self.web = httpslib.HTTPConnection(self.url.netloc)
+            try:
+                with open(self.lastcheckfile) as f:
+                    #Readline should ensure no accidental trailing newlines
+                    self.lastcheck = f.readline()
+                self.lastcheck = float(self.lastcheck)
+            except (OSError, ValueError, TypeError):
+                #If we got an exception, lastcheck may be unset or not a float
+                #Set it to 0 (epoch) to force a cert update
+                self.lastcheck = 0
+            try:
+                os.mkdir(self.storedir)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
+                pass
 
         def checkpoint(self):
             pass
@@ -495,15 +511,6 @@ class StoreHandler(object):
             reply = self.web.getresponse()
             parser.feed(reply.read())
             files = parser.get_items()
-            try:
-                with open(self.lastcheckfile) as f:
-                    #Readline should ensure no accidental trailing newlines
-                    lastcheck = f.readline()
-                lastcheck = float(lastcheck)
-            except (OSError, ValueError):
-                #If we got an exception, lastcheck may be unset or not a float
-                #Set it to 0 (epoch) to force a cert update
-                lastcheck = 0
 
             for certfile in files:
                 self.web.request('GET', self.url.path + certfile)
@@ -512,25 +519,24 @@ class StoreHandler(object):
                     resp.getheader("Last-Modified"),
                     "%a, %d %b %Y %H:%M:%S %Z"))
 
-                if lastmod > lastcheck:
+                if lastmod > self.lastcheck:
                     log.debug("Fetching %s", certfile)
                     with tempfile.NamedTemporaryFile(
                         dir=self.storedir,
                         delete=False) as f_crt:
                         f_crt.write(resp.read())
 
-                    try:
-                        with nested(self.lock, tempfile.NamedTemporaryFile(
-                            dir=self.storedir,
-                            delete=False)) as (lock, f):
-                                f.write(str(now))
+            self.lastcheck = now
+            try:
+                with nested(self.lock, tempfile.NamedTemporaryFile(
+                    dir=self.storedir,
+                    delete=False)) as (lock, f):
+                    f.write(str(now))
 
-                        os.rename(f.name, self.lastcheckfile)
-                    except OSError:
-                        #Don't care if the lastcheck write fails
-                        pass
-                else:
-                    log.debug("Skipping download of %s", certfile)
+                os.rename(f.name, self.lastcheckfile)
+            except OSError:
+                #Don't care if the lastcheck write fails
+                pass
 
         def write(self, certobj):
             """Puts certificate on a webdav server."""
