@@ -9,8 +9,7 @@ import select
 import ConfigParser
 import threading
 import os
-from M2Crypto import m2, RSA, X509, EVP, ASN1
-import httplib
+from M2Crypto import m2, RSA, X509, EVP, ASN1, httpslib
 from urlparse import urlparse
 import logging
 from contextlib import closing, nested
@@ -28,6 +27,7 @@ import dulwich
 import stat
 import datetime
 from HTMLParser import HTMLParser
+
 
 __all__ = ['StoreHandler',
            'pending_csrs',
@@ -222,9 +222,9 @@ class StoreHandler(object):
             self.url = urlparse(config.get('store', 'StoreUrl'))
 
             if self.url.scheme == "https":
-                self.web = httplib.HTTPSConnection(self.url.netloc)
+                self.web = httpslib.HTTPSConnection(self.url.netloc)
             else:
-                self.web = httplib.HTTPConnection(self.url.netloc)
+                self.web = httpslib.HTTPConnection(self.url.netloc)
 
         def setup(self):
             pass
@@ -481,9 +481,9 @@ class StoreHandler(object):
         def setup(self):
             self.url = urlparse(config.get('store', 'StoreUrl'))
             if self.url.scheme == "https":
-                self.web = httplib.HTTPSConnection(self.url.netloc)
+                self.web = httpslib.HTTPSConnection(self.url.netloc)
             else:
-                self.web = httplib.HTTPConnection(self.url.netloc)
+                self.web = httpslib.HTTPConnection(self.url.netloc)
 
         def checkpoint(self):
             pass
