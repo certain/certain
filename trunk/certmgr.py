@@ -350,6 +350,9 @@ class StoreHandler(object):
                 self.repo.get_graph_walker(),
                 f.write, open(os.devnull, 'w').write)
             commit()
+            self.repo.refs['refs/remotes/origin/HEAD'] = (
+                'ref: refs/remotes/origin/master')
+            self.repo.refs['refs/remotes/origin/master'] = remote_refs['HEAD']
             # We need to decide if the HEAD is a descendant of the branch we
             # are about to merge. If it is, merging again will destroy any
             # commits
