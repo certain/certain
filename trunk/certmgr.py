@@ -27,6 +27,7 @@ import dulwich
 import stat
 import datetime
 from HTMLParser import HTMLParser
+import urllib
 
 
 __all__ = ['StoreHandler',
@@ -475,6 +476,7 @@ class StoreHandler(object):
             ###FIXME - same folder is used for write and fetch
             #bad things could happen!
             self.storedir = config.get('global', 'StoreDir')
+            self.webdir = config.get('web', 'WebDir')
             self.lock = threading.Lock()
             self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
             self.lastcheck = None
@@ -496,6 +498,7 @@ class StoreHandler(object):
                 self.lastcheck = 0
             try:
                 os.mkdir(self.storedir)
+                os.mkdir(self.webdir)
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
@@ -505,6 +508,7 @@ class StoreHandler(object):
             pass
 
         def fetch(self):
+            """Fetch certificates from a webserver."""
             parser = self._AnchorParser()
             now = time.time()
             self.web.request('GET', self.url.path)
@@ -520,13 +524,16 @@ class StoreHandler(object):
                     "%a, %d %b %Y %H:%M:%S %Z"))
 
                 if lastmod > self.lastcheck:
-                    log.debug("Fetching %s", certfile)
+                    log.debug("Fetching cert %s to %s",
+                              certfile, self.storedir)
                     with tempfile.NamedTemporaryFile(
                         dir=self.storedir,
                         delete=False) as f_crt:
                         f_crt.write(resp.read())
+                        os.rename(f_crt.name,
+                                  os.path.join(self.storedir,
+                                               urllib.unquote(certfile)))
 
-            self.lastcheck = now
             try:
                 with nested(self.lock, tempfile.NamedTemporaryFile(
                     dir=self.storedir,
@@ -534,21 +541,23 @@ class StoreHandler(object):
                     f.write(str(now))
 
                 os.rename(f.name, self.lastcheckfile)
-            except (IOError, OSError):
+                self.lastcheck = now
+            except (IOError, OSError), e:
                 #Don't care if the lastcheck write fails
+                log.debug("Error writing to store %s", e)
                 pass
 
         def write(self, certobj):
-            """Puts certificate on a webdav server."""
+            """Write certificate to a web-served path."""
 
             with tempfile.NamedTemporaryFile(
-                dir=self.storedir,
+                dir=self.webdir,
                 delete=False) as f_crt:
-                log.info("Writing cert: %s to store: %s",
-                         certobj.get_subject().CN, self.storedir)
+                log.info("Writing cert: %s to %s",
+                         certobj.get_subject().CN, self.webdir)
                 f_crt.write(certobj.as_pem())
 
-            certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
+            certfile = "%s/%s.crt" % (self.webdir, certobj.get_subject().CN)
             os.rename(f_crt.name, certfile)
 
         def __str__(self):
