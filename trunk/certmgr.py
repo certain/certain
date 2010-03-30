@@ -568,6 +568,20 @@ class StoreHandler(object):
         def __str__(self):
             return "StoreHandler.web()"
 
+    class multiplex(StoreBase):
+        """StoreHandler which defers to a set of other StoreHandlers."""
+
+        def __init__(self, *args):
+            me = sys._getframe().f_code.co_name
+            if me == '__init__':
+                self.stores = [StoreHandler.dispatch(handler)
+                                for handler in
+                                config.get('Store', 'handlers').split()]
+            for store in self.stores:
+                getattr(store, me)(self, *args)
+
+        checkpoint = write = fetch = setup = __init__
+
 
 class ExpiryNotifyHandler(object):
     """Class to handle different expiry notification methods."""
