@@ -510,9 +510,11 @@ class StoreHandler(object):
         def fetch(self):
             """Fetch certificates from a webserver."""
             parser = self._AnchorParser()
-            now = time.time()
             self.web.request('GET', self.url.path)
             reply = self.web.getresponse()
+            now = time.mktime(time.strptime(
+                reply.getheader("Date"),
+                "%a, %d %b %Y %H:%M:%S %Z"))
             parser.feed(reply.read())
             files = parser.get_items()
 
@@ -537,7 +539,7 @@ class StoreHandler(object):
             try:
                 with tempfile.NamedTemporaryFile(
                     dir=self.storedir,
-                    delete=False)) as f:
+                    delete=False) as f:
                     f.write(str(now))
 
                 os.rename(f.name, self.lastcheckfile)
