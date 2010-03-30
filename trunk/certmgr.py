@@ -620,7 +620,10 @@ class ExpiryNotifyHandler(object):
 """CA Expiry Warning
 
 CA %s expires at: %s
-Please update your CA certificate!""" % (certobj.get_subject().CN,
+A new CA will be generated automatically.
+
+If you require signing by a third party, please do this
+for the newly created CA.""" % (certobj.get_subject().CN,
                                          str(certobj.get_not_after())))
 
         msg['To'] = config.get('ca', 'Email')
