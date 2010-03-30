@@ -239,7 +239,8 @@ class StoreHandler(object):
         def write(self, certobj):
             """Puts certificate on a webdav server."""
 
-            certfile = "%s/%s.crt" % (self.url.path, certobj.get_subject().CN)
+            certfile = os.path.join(
+                self.url.path, certobj.get_subject().CN) + ".crt"
             log.debug("Writing cert: %s to server: %s", certfile, self.web)
             self.web.request('PUT', certfile, certobj.as_pem())
             resp = self.web.getresponse()
@@ -285,7 +286,8 @@ class StoreHandler(object):
         def write(self, certobj):
             """Write the certificate to the local svn working copy."""
 
-            certfile = "%s/%s.crt" % (self.storedir, certobj.get_subject().CN)
+            certfile = os.path.join(
+                self.storedir, certobj.get_subject().CN) + ".crt"
             log.debug("Storing cert: %s", certfile)
 
             with nested(self.lock, tempfile.NamedTemporaryFile(
@@ -477,7 +479,6 @@ class StoreHandler(object):
             #bad things could happen!
             self.storedir = config.get('global', 'StoreDir')
             self.webdir = config.get('web', 'WebDir')
-            self.lock = threading.Lock()
             self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
             self.lastcheck = None
 
@@ -502,7 +503,6 @@ class StoreHandler(object):
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
-                pass
 
         def checkpoint(self):
             pass
@@ -535,16 +535,15 @@ class StoreHandler(object):
                                                urllib.unquote(certfile)))
 
             try:
-                with nested(self.lock, tempfile.NamedTemporaryFile(
+                with tempfile.NamedTemporaryFile(
                     dir=self.storedir,
-                    delete=False)) as (lock, f):
+                    delete=False)) as f:
                     f.write(str(now))
 
                 os.rename(f.name, self.lastcheckfile)
                 self.lastcheck = now
-            except (IOError, OSError), e:
+            except Exception:
                 #Don't care if the lastcheck write fails
-                log.debug("Error writing to store %s", e)
                 pass
 
         def write(self, certobj):
@@ -557,7 +556,8 @@ class StoreHandler(object):
                          certobj.get_subject().CN, self.webdir)
                 f_crt.write(certobj.as_pem())
 
-            certfile = "%s/%s.crt" % (self.webdir, certobj.get_subject().CN)
+            certfile = os.path.join(
+                self.webdir, certobj.get_subject().CN) + ".crt"
             os.rename(f_crt.name, certfile)
 
         def __str__(self):
