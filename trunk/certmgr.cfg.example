@@ -81,3 +81,11 @@ ExpiryDeadline = 608400
 [email]
 SMTPServer = smtp.example.com
 FromAddress = certmgr@example.com
+
+[web]
+#Directory to write certs to (to be served by a webserver)
+WebDir = /var/www/html/certs
+#Should certmgr start a simple webserver serving WebDir (boolean)
+EnableWebserver = 0
+#Port for webserver to listen on
+ServerPort = 8765

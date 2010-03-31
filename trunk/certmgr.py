@@ -28,6 +28,8 @@ import stat
 import datetime
 from HTMLParser import HTMLParser
 import urllib
+import SocketServer
+import SimpleHTTPServer
 
 
 __all__ = ['StoreHandler',
@@ -557,13 +559,16 @@ class StoreHandler(object):
             with tempfile.NamedTemporaryFile(
                 dir=self.webdir,
                 delete=False) as f_crt:
-                log.info("Writing cert: %s to %s",
+                log.debug("Writing cert: %s to %s",
                          certobj.get_subject().CN, self.webdir)
                 f_crt.write(certobj.as_pem())
 
             certfile = os.path.join(
                 self.webdir, certobj.get_subject().CN) + ".crt"
             os.rename(f_crt.name, certfile)
+
+            #As the webdir and storedir are different paths, fetch now
+            self.fetch()
 
         def __str__(self):
             return "StoreHandler.web()"
@@ -581,6 +586,22 @@ class StoreHandler(object):
                 getattr(store, me)(self, *args)
 
         checkpoint = write = fetch = setup = __init__
+
+
+class WebServer(threading.Thread):
+    """Launch a simple webserver."""
+
+    def __init__(self, webdir, port):
+        threading.Thread.__init__(self)
+        self.webdir = webdir
+        self.port = port
+
+    def run(self):
+        os.chdir(self.webdir)
+        Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+        httpd = SocketServer.TCPServer(("", self.port), Handler)
+
+        httpd.serve_forever()
 
 
 class ExpiryNotifyHandler(object):
@@ -1440,7 +1461,7 @@ def send_csr(csrobj):
         return
 
     if rval == 'OK' and data:
-        log.info("CSR received by server")
+        log.info("CSR received by master.")
         try:
             cert = X509.load_cert_string(data)
             with tempfile.NamedTemporaryFile(
@@ -1449,21 +1470,28 @@ def send_csr(csrobj):
                 delete=False) as f_crt:
                 f_crt.write(cert.as_pem())
         except X509.X509Error:
-            log.exception("Error receiving cert.")
+            log.exception("Error receiving certificate.")
 
-        log.debug("Writing received cert")
+        log.info("Writing signed certificate.")
         os.rename(f_crt.name, cert_file(config.get('cert', 'CN')))
         return cert
     elif rval == 'OK':
-        log.info("CSR received and cached by server.")
+        log.info("CSR received and cached by master.")
     elif rval == 'FAIL' and data:
-        log.error("Error processing CSR: %s", data)
+        log.error("Error processing CSR by master: %s", data)
     else: # Implies a solo 'FAIL' or something else bad
         log.error("Error receiving/parsing answer from master.")
 
 
 def launch_daemon():
     """Start the certmgr listening socket and/or expiry timers."""
+
+    if config.get('web', 'EnableWebserver'):
+        log.debug("Starting webserver.")
+        web = WebServer(config.get('web', 'WebDir'),
+                        config.getint('web', 'ServerPort'))
+        web.daemon = True
+        web.start()
 
     cakey, cacert = check_cacerts()
 
