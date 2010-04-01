@@ -190,6 +190,17 @@ class StoreHandler(object):
 
         """
 
+        if name.lower() == 'multiplex':
+            bases = []
+            for store in config.get('Store', 'handlers').split():
+                try:
+                    bases += getattr(StoreHandler, name)
+                except AttributeError:
+                    # We have to call storeerror now, because it can't be a
+                    # base class
+                    cls.name = name
+                    self.storeerror()
+            return type('Multiplex', bases, {})()
         cls.name = name
         return getattr(cls, name, cls.storeerror)()
 
@@ -203,16 +214,16 @@ class StoreHandler(object):
         """'Empty' none StoreHandler plugin."""
 
         def setup(self):
-            pass
+            super(StoreHandler.none, self).setup()
 
         def checkpoint(self):
-            pass
+            super(StoreHandler.none, self).checkpoint()
 
         def fetch(self):
-            pass
+            super(StoreHandler.none, self).fetch()
 
         def write(self, certobj):
-            pass
+            super(StoreHandler.none, self).write()
 
         def __str__(self):
             return "StoreHandler.none()"
@@ -221,7 +232,7 @@ class StoreHandler(object):
         """Webdav StoreHandler plugin."""
 
         def __init__(self):
-            super(webdav, self).__init__()
+            super(StoreHandler.webdav, self).__init__()
             self.url = urlparse(config.get('store', 'StoreUrl'))
 
             if self.url.scheme == "https":
@@ -230,13 +241,13 @@ class StoreHandler(object):
                 self.web = httpslib.HTTPConnection(self.url.netloc)
 
         def setup(self):
-            pass
+            super(StoreHandler.webdav, self).setup()
 
         def checkpoint(self):
-            pass
+            super(StoreHandler.webdav, self).checkpoint()
 
         def fetch(self):
-            pass
+            super(StoreHandler.webdav, self).fetch()
 
         def write(self, certobj):
             """Puts certificate on a webdav server."""
@@ -249,6 +260,7 @@ class StoreHandler(object):
             if not 200 <= resp.status < 300:
                 raise Exception(
                     "Error writing to webdav server: %d" % resp.status)
+            super(StoreHandler.webdav, self).write()
 
         def __str__(self):
             return "StoreHandler.webdav()"
@@ -257,7 +269,7 @@ class StoreHandler(object):
         """Subversion StoreHandler plugin."""
 
         def __init__(self):
-            super(svn, self).__init__()
+            super(StoreHandler.svn, self).__init__()
             self.client = pysvn.Client()
             self.client.callback_ssl_server_trust_prompt = lambda trust_data: (
                 True, 8, False) #8 = Cert not yet trusted - i.e auto-trust
@@ -271,6 +283,7 @@ class StoreHandler(object):
             with self.lock:
                 self.client.checkout(config.get('store', 'StoreUrl'),
                                      self.storedir)
+            super(StoreHandler.svn, self).setup()
 
         def checkpoint(self):
             """Perform an svn checkin."""
@@ -278,12 +291,14 @@ class StoreHandler(object):
             log.debug("Doing checkin of store")
             with self.lock:
                 self.client.checkin(self.storedir, "Adding certificates")
+            super(StoreHandler.svn, self).checkpoint()
 
         def fetch(self):
             """Perform an svn update."""
 
             with self.lock:
                 self.client.update(self.storedir)
+            super(StoreHandler.svn, self).fetch()
 
         def write(self, certobj):
             """Write the certificate to the local svn working copy."""
@@ -305,6 +320,7 @@ class StoreHandler(object):
                     self.client.add(certfile)
             except pysvn.ClientError:
                 log.exception("Failed to add %s to repository", certfile)
+            super(StoreHandler.svn, self).write()
 
         def __str__(self):
             return "StoreHandler.svn()"
@@ -315,6 +331,7 @@ class StoreHandler(object):
         lock = threading.RLock()
 
         def __init__(self):
+            super(StoreHandler.git, self).__init__()
             # Dulwich stores the path literally, so if it is relative, the
             # code is no longer thread safe. abspath works around this.
             path = os.path.abspath(config.get('global', 'StoreDir'))
@@ -368,6 +385,7 @@ class StoreHandler(object):
                 tree = self.repo.tree(
                     self.repo.get_object(self.repo.head()).tree)
                 self._unpack(tree, self.repo.path)
+            super(StoreHandler.git, self).setup()
 
         @synchronised(lock)
         def checkpoint(self):
@@ -381,10 +399,12 @@ class StoreHandler(object):
             assert get_changed_refs(None)['refs/heads/master']
             client.send_pack(path, get_changed_refs,
                 self.repo.object_store.generate_pack_contents)
+            super(StoreHandler.git, self).checkpoint()
 
         @synchronised(lock)
         def fetch(self):
             self.setup()
+            super(StoreHandler.git, self).fetch()
 
         @synchronised(lock)
         def write(self, certobj):
@@ -409,6 +429,7 @@ class StoreHandler(object):
             self.repo.object_store.add_object(commit)
             self.repo.refs['refs/heads/master'] = commit.id
             self._unpack(tree, self.repo.path)
+            super(StoreHandler.git, self).write()
 
         def _unpack(self, tree, path='.'):
             for name, mode, sha1 in tree.iteritems():
@@ -472,16 +493,14 @@ class StoreHandler(object):
             def handle_starttag(self, tag, attrs):
                 if tag == 'a':
                     for key, value in attrs:
-                        if key == 'href':
-                            if value.endswith('.crt'):
-                                self.items.append(value)
+                        if key == 'href' and value.endswith('.crt'):
+                            self.items.append(value)
 
             def get_items(self):
                 return self.items
 
         def __init__(self):
-            ###FIXME - same folder is used for write and fetch
-            #bad things could happen!
+            super(StoreHandler.web, self).__init__()
             self.storedir = config.get('global', 'StoreDir')
             self.webdir = config.get('web', 'WebDir')
             self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
@@ -508,9 +527,10 @@ class StoreHandler(object):
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
+            super(StoreHandler.web, self).setup()
 
         def checkpoint(self):
-            pass
+            super(StoreHandler.web, self).checkpoint()
 
         def fetch(self):
             """Fetch certificates from a webserver."""
@@ -552,6 +572,7 @@ class StoreHandler(object):
             except Exception:
                 #Don't care if the lastcheck write fails
                 pass
+            super(StoreHandler.web, self).fetch()
 
         def write(self, certobj):
             """Write certificate to a web-served path."""
@@ -569,23 +590,10 @@ class StoreHandler(object):
 
             #As the webdir and storedir are different paths, fetch now
             self.fetch()
+            super(StoreHandler.web, self).write()
 
         def __str__(self):
             return "StoreHandler.web()"
-
-    class multiplex(StoreBase):
-        """StoreHandler which defers to a set of other StoreHandlers."""
-
-        def __init__(self, *args):
-            me = sys._getframe().f_code.co_name
-            if me == '__init__':
-                self.stores = [StoreHandler.dispatch(handler)
-                                for handler in
-                                config.get('Store', 'handlers').split()]
-            for store in self.stores:
-                getattr(store, me)(self, *args)
-
-        checkpoint = write = fetch = setup = __init__
 
 
 class WebServer(threading.Thread):
