@@ -830,8 +830,7 @@ class CertExpiry(object):
         """
 
         try:
-            for notifytype in config.get(
-                'master', 'ExpiryNotifiers').replace(' ', '').split(','):
+            for notifytype in config.get('master', 'ExpiryNotifiers').split():
                 ExpiryNotifyHandler.dispatch(notifytype, self.cacert)
             self.cacert = make_ca()
         finally:

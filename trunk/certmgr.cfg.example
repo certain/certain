@@ -13,7 +13,7 @@ PrivatePath = %(RootPath)s/private
 #Path to store received CSR files awaiting signing
 CSRCache = %(RootPath)s/CSRCache
 #Path of certificate store
-StoreDir = %(RootPath)s//store
+StoreDir = %(RootPath)s/store
 #Is this computer the master? (boolean)
 IsMaster = 1
 #Default address & port for Master
@@ -28,14 +28,15 @@ AutoSign = 0
 #Require the CSR CommonName to match the requesting host? (boolean)
 HostVerify = 0
 #Types of notifictions to send when CA is due to expire
-#Can be any/all of log, email
-ExpiryNotifiers = log, email
+#A space-separated list of: log, email
+ExpiryNotifiers = log email
 #How often to send Notification messages for expired ca (seconds)
 NotifyFrequency = 86400
 
 
 [store]
-#StoreType can be: none, svn
+#StoreType can be a space-separated list of one or more of:
+# none, svn, git, web, webserver, webdav
 StoreType = svn
 StoreUrl = https://certmgr/certs
 #How often to poll the store for new certificates
@@ -82,10 +83,11 @@ ExpiryDeadline = 608400
 SMTPServer = smtp.example.com
 FromAddress = certmgr@example.com
 
+
 [web]
 #Directory to write certs to (to be served by a webserver)
 WebDir = /var/www/html/certs
 #Should certmgr start a simple webserver serving WebDir (boolean)
 EnableWebserver = 0
 #Port for webserver to listen on
-ServerPort = 8765
+ServerPort = 32184
