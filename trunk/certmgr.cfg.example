@@ -36,7 +36,7 @@ NotifyFrequency = 86400
 
 [store]
 #StoreType can be a space-separated list of one or more of:
-# none, svn, git, web, webserver, webdav
+# none, svn, git, web, webserver, webdav, multiplex
 StoreType = svn
 StoreUrl = https://certmgr/certs
 #How often to poll the store for new certificates
