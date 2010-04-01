@@ -504,14 +504,14 @@ class StoreHandler(object):
             self.storedir = config.get('global', 'StoreDir')
             self.webdir = config.get('web', 'WebDir')
             self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
-            self.lastcheck = None
-
-        def setup(self):
+            self.lastcheck = 0
             self.url = urlparse(config.get('store', 'StoreUrl'))
             if self.url.scheme == "https":
                 self.web = httpslib.HTTPSConnection(self.url.netloc)
             else:
                 self.web = httpslib.HTTPConnection(self.url.netloc)
+
+        def setup(self):
             try:
                 with open(self.lastcheckfile) as f:
                     #Readline should ensure no accidental trailing newlines
@@ -588,28 +588,29 @@ class StoreHandler(object):
                 self.webdir, certobj.get_subject().CN) + ".crt"
             os.rename(f_crt.name, certfile)
 
-            #As the webdir and storedir are different paths, fetch now
-            self.fetch()
             super(StoreHandler.web, self).write()
 
         def __str__(self):
             return "StoreHandler.web()"
 
 
-class WebServer(threading.Thread):
-    """Launch a simple webserver."""
+    class webserver(StoreBase):
+        """Launch a simple webserver."""
 
-    def __init__(self, webdir, port):
-        threading.Thread.__init__(self)
-        self.webdir = webdir
-        self.port = port
+        def __init__(self):
+            super(StoreHandler.webServer, self).__init__()
+            self.webdir = config.get('web', 'WebDir')
+            self.port = config.getint('web', 'ServerPort')
 
-    def run(self):
-        os.chdir(self.webdir)
-        Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-        httpd = SocketServer.TCPServer(("", self.port), Handler)
+        def setup(self):
+            pid = os.fork()
+            if pid == 0: # child
+                os.chdir(self.webdir)
+                Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+                httpd = SocketServer.TCPServer(("", self.port), Handler)
 
-        httpd.serve_forever()
+                httpd.serve_forever()
+            # parent continues...
 
 
 class ExpiryNotifyHandler(object):
@@ -1493,13 +1494,6 @@ def send_csr(csrobj):
 
 def launch_daemon():
     """Start the certmgr listening socket and/or expiry timers."""
-
-    if config.get('web', 'EnableWebserver'):
-        log.debug("Starting webserver.")
-        web = WebServer(config.get('web', 'WebDir'),
-                        config.getint('web', 'ServerPort'))
-        web.daemon = True
-        web.start()
 
     cakey, cacert = check_cacerts()
 
