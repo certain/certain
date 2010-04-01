@@ -199,8 +199,8 @@ class StoreHandler(object):
                     # We have to call storeerror now, because it can't be a
                     # base class
                     cls.name = name
-                    self.storeerror()
-            return type('Multiplex', bases, {})()
+                    cls.storeerror()
+            return type('Multiplex', tuple(bases), {})()
         cls.name = name
         return getattr(cls, name, cls.storeerror)()
 
