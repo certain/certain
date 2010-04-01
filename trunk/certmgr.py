@@ -190,17 +190,6 @@ class StoreHandler(object):
 
         """
 
-        if name.lower() == 'multiplex':
-            bases = []
-            for store in config.get('Store', 'handlers').split():
-                try:
-                    bases += getattr(StoreHandler, name)
-                except AttributeError:
-                    # We have to call storeerror now, because it can't be a
-                    # base class
-                    cls.name = name
-                    cls.storeerror()
-            return type('Multiplex', tuple(bases), {})()
         cls.name = name
         return getattr(cls, name, cls.storeerror)()
 
@@ -592,25 +581,6 @@ class StoreHandler(object):
 
         def __str__(self):
             return "StoreHandler.web()"
-
-
-    class webserver(StoreBase):
-        """Launch a simple webserver."""
-
-        def __init__(self):
-            super(StoreHandler.webServer, self).__init__()
-            self.webdir = config.get('web', 'WebDir')
-            self.port = config.getint('web', 'ServerPort')
-
-        def setup(self):
-            pid = os.fork()
-            if pid == 0: # child
-                os.chdir(self.webdir)
-                Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-                httpd = SocketServer.TCPServer(("", self.port), Handler)
-
-                httpd.serve_forever()
-            # parent continues...
 
 
 class ExpiryNotifyHandler(object):
