@@ -55,6 +55,5 @@ def dispatch(name, errorfunc=storeerror):
     try:
         return __import__('certmgr.StoreHandler.' + name,
             fromlist=name).store()
-    except (ImportError, AttributeError), e:
-        raise
+    except (ImportError, AttributeError):
         return storeerror(name)
