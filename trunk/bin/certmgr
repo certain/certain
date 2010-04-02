@@ -26,6 +26,10 @@ def main():
     parser.add_option("-g", "--get",
                       action="store_true", dest="get",
                       help="Update certificates from the central store.")
+    parser.add_option("-p", "--pid-file",
+                      dest="pidfile",
+                      help="Specify an alternate PID file.",
+                      default="/var/run/certmgr.pid")
 
     options, args = parser.parse_args()
 
@@ -38,8 +42,14 @@ def main():
         certmgr.make_cert()
 
     if options.daemon:
-        daemon.create_daemon()
-        certmgr.launch_daemon()
+        if certmgr.config.get('global', 'LogLevel') != 'DEBUG':
+	    daemon.create_daemon()
+        with open(options.pidfile, 'w') as f:
+            f.write(os.getpid())
+        try:
+            certmgr.launch_daemon()
+        finally:
+            os.unlink(options.pidfile)
 
     if options.sign:
         with certmgr.StoreHandler.dispatch(

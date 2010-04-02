@@ -37,7 +37,7 @@ exit 1
 fi
 
 PARAMS="--daemon"
-START="--start --chuid ${SERVER_USER} --quiet --background --exec ${DAEMON} --pidfile ${PIDFILE} --make-pidfile -- ${PARAMS}"
+START="--start --chuid ${SERVER_USER} --quiet --exec ${DAEMON} --pidfile ${PIDFILE} -- ${PARAMS}"
 
 case "$1" in
   start)
