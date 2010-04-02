@@ -3,6 +3,7 @@
 """Certificate Management System"""
 
 import certmgr
+from certmgr import daemon
 from os import path
 from optparse import OptionParser
 
@@ -37,6 +38,7 @@ def main():
         certmgr.make_cert()
 
     if options.daemon:
+        daemon.create_daemon()
         certmgr.launch_daemon()
 
     if options.sign:
