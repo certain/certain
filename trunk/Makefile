@@ -3,17 +3,11 @@
 prefix=src
 
 install:
-	install -d $(prefix)/usr/share/pyshared/
+	install -d $(prefix)/usr/share/pyshared/certmgr/StoreHandler
 	install -d $(prefix)/usr/bin
 	install -d $(prefix)/etc/certmgr
-	install -d -m 0700 $(prefix)/etc/certmgr/CA
-	install -d -m 0700 $(prefix)/etc/certmgr/CA/private
-	install -d -m 0700 $(prefix)/etc/certmgr/private
-	install -d $(prefix)/etc/certmgr/CSRCache
-	install -d $(prefix)/etc/certmgr/certs
 
-	install certmgr.py $(prefix)/usr/share/pyshared/
-	install certmgr $(prefix)/usr/bin/
-	install certmgr.cfg.example $(prefix)/etc/certmgr/
-
-
+	install -m 0644 certmgr/__init__.py $(prefix)/usr/share/pyshared/certmgr
+	install -m 0644 certmgr/StoreHandler/*.py $(prefix)/usr/share/pyshared/certmgr/StoreHandler
+	install bin/certmgr $(prefix)/usr/bin/
+	install -m 0644 certmgr.cfg.example $(prefix)/etc/certmgr/
