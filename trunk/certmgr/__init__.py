@@ -23,6 +23,7 @@ import uuid
 import base64
 import datetime
 import StoreHandler
+import ExpiryHandler
 
 
 __all__ = ['pending_csrs',
@@ -123,58 +124,6 @@ class LazyConfig(object):
     def __getattr__(self, result):
         parse_config()
         return getattr(config, result)
-
-
-class ExpiryNotifyHandler(object):
-    """Class to handle different expiry notification methods."""
-
-    @classmethod
-    def dispatch(cls, name, certobj):
-        """Dispatch a method to handle this type of expiry.
-
-        Pass a certificate object as the only parameter. These methods may
-        return anything, but usually None.
-
-        """
-
-        cls.name = name
-        return getattr(cls, name, cls.notifyerror)(certobj)
-
-    @classmethod
-    def notifyerror(cls, certobj):
-        """Error method - default to deal with unknown Notify types."""
-
-        log.warn("Unknown notification type: " + cls.name)
-
-    @staticmethod
-    def log(certobj):
-        """Log cert expiry messages."""
-
-        log.warn("Certificate is about to expire: %s",
-                 certobj.get_subject().CN)
-
-    @staticmethod
-    def email(certobj):
-        """Email a warning about cert expiry."""
-
-        log.debug("Emailing about cert expiry")
-        msg = MIMEText(
-"""CA Expiry Warning
-
-CA %s expires at: %s
-A new CA will be generated automatically.
-
-If you require signing by a third party, please do this
-for the newly created CA.""" % (certobj.get_subject().CN,
-                                         str(certobj.get_not_after())))
-
-        msg['To'] = config.get('ca', 'Email')
-        msg['From'] = config.get('email', 'FromAddress')
-        msg['Subject'] = "CA Expiry Warning"
-
-        smtp = smtplib.SMTP(config.get('email', 'SMTPServer'))
-        smtp.sendmail(msg['From'], msg['To'], msg.as_string())
-        smtp.quit()
 
 
 def closing_by_name(name):
