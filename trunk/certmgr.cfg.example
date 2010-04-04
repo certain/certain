@@ -41,6 +41,9 @@ StoreType = svn
 StoreUrl = https://certmgr/certs
 #How often to poll the store for new certificates
 PollTimer = 3600
+# StoreServer is the server module which will be started by the 'storeserver'
+# command
+StoreServer = webserver
 
 
 [ca]
@@ -84,10 +87,8 @@ SMTPServer = smtp.example.com
 FromAddress = certmgr@example.com
 
 
-[web]
+[webserver]
 #Directory to write certs to (to be served by a webserver)
 WebDir = /var/www/html/certs
-#Should certmgr start a simple webserver serving WebDir (boolean)
-EnableWebserver = 0
 #Port for webserver to listen on
 ServerPort = 32184
