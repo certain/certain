@@ -3,6 +3,7 @@
 # .. should refer to 'certmgr'
 from ..StoreHandler import StoreBase
 from .. import config
+from .. import log
 from M2Crypto import httpslib
 from HTMLParser import HTMLParser
 from urlparse import urlparse
@@ -10,6 +11,7 @@ import os
 import urllib2
 import tempfile
 import errno
+import time
 
 
 class store(StoreBase):
@@ -32,7 +34,7 @@ class store(StoreBase):
     def __init__(self):
         super(store, self).__init__()
         self.storedir = config.get('global', 'StoreDir')
-        self.webdir = config.get('web', 'WebDir')
+        self.webdir = config.get('webserver', 'WebDir')
         self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
         self.lastcheck = 0
         self.url = urlparse(config.get('store', 'StoreUrl'))

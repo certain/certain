@@ -3,6 +3,7 @@
 # .. should refer to 'certmgr'
 from ..StoreHandler import StoreBase
 from .. import config
+from .. import log
 import os
 from urlparse import urlparse
 from M2Crypto import httpslib
