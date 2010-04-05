@@ -4,7 +4,7 @@
 
 import certmgr
 from certmgr import daemon
-from os import path
+import os
 from optparse import OptionParser
 
 
@@ -45,7 +45,7 @@ def main():
         if certmgr.config.get('global', 'LogLevel') != 'DEBUG':
 	    daemon.create_daemon()
         with open(options.pidfile, 'w') as f:
-            f.write(os.getpid())
+            f.write(str(os.getpid()))
         try:
             certmgr.launch_daemon()
         finally:

@@ -33,7 +33,7 @@ def main():
         certmgr.daemon.create_daemon()
 
     with open(options.pidfile, 'w') as f:
-        f.write(os.getpid())
+        f.write(str(os.getpid()))
     try:
         storeserver.main()
     finally:

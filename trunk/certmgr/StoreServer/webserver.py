@@ -6,6 +6,7 @@ import os
 import certmgr
 import errno
 
+
 def main():
     dir = certmgr.config.get('webserver', 'WebDir')
     try:
