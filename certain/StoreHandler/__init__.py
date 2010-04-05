@@ -53,7 +53,8 @@ def dispatch(name, errorfunc=storeerror):
     """
 
     try:
-        return __import__('certain.StoreHandler.' + name,
-            fromlist=name).store()
+        store = __import__(__name__ + '.' + name,
+            fromlist=name).store
     except (ImportError, AttributeError):
         return storeerror(name)
+    return store()

@@ -15,15 +15,13 @@ from contextlib import closing
 import errno
 import tempfile
 import abc
-import smtplib
-from email.mime.text import MIMEText
 from functools import wraps
 from collections import namedtuple
 import uuid
 import base64
 import datetime
-import StoreHandler
-import ExpiryHandler
+from . import StoreHandler
+from . import ExpiryHandler
 
 
 __all__ = ['pending_csrs',
@@ -292,7 +290,7 @@ class CertExpiry(object):
 
         try:
             for notifytype in config.get('master', 'ExpiryNotifiers').split():
-                ExpiryNotifyHandler.dispatch(notifytype, self.cacert)
+                ExpiryHandler.dispatch(notifytype, self.cacert)
             self.cacert = make_ca()
         finally:
             self.expiry_timer()
@@ -657,7 +655,7 @@ def key_from_file(keyfilename):
     """Read a private key from file.
 
     Note: M2Crypto provides no way to not set a passphrase on keys
-    By default, Certmgr uses the passphrase 'certain' throughout.
+    By default, Certain uses the passphrase 'certain' throughout.
 
     Returns an RSA object.
 

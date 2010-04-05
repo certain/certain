@@ -1,4 +1,4 @@
-from ..certain import log
+from .. import log
 
 def expire(certobj):
     """Log cert expiry messages."""

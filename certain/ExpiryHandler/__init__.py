@@ -9,10 +9,11 @@ def dispatch(name, certobj):
     """
 
     try:
-        return __import__('certain.ExpiryHandler.' + name,
-            fromlist=name).expire(certobj)
+        expire = __import__(__name__ + '.' + name,
+            fromlist=name).expire
     except (ImportError, AttributeError):
         return expiryerror(name, certobj)
+    return expire(certobj)
 
 def expiryerror(name, certobj):
     """Error method - default to deal with unknown Notify types."""
