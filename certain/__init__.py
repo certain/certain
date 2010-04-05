@@ -458,7 +458,7 @@ def sign_data(data):
     """Sign data using the private key, return a base64 string."""
 
     signingkey = EVP.load_key(key_file(config.get('cert', 'CN')),
-                              callback=lambda passphrase: 'certmgr')
+                              callback=lambda passphrase: 'certain')
 
     signingkey.sign_init()
     signingkey.sign_update(data)
@@ -493,18 +493,18 @@ def make_key(bits=2048):
     return RSA.gen_key(bits, m2.RSA_F4)
 
 
-def make_csr(key, CN, Email="certmgr@certmgr",
-             OU="CertMgr Dept", O="CertMgr Org",
-             L="CertMgr City", ST="CertMgr State", C="UK"):
+def make_csr(key, CN, Email="certain@certain",
+             OU="Certain Dept", O="Certain Org",
+             L="Certain City", ST="Certain State", C="UK"):
     """Make a certificate request from an RSA key
 
     key: String containing key
     CN: Common Name (aka CA hostname)
     Email: Email address of certificate owner
-    OU: Organisational Unit (CertMgr Dept)
-    O: Organisation (CertMgr Org)
-    L: Location (CertMgr City)
-    ST: State (CertMgr State)
+    OU: Organisational Unit (Certain Dept)
+    O: Organisation (Certain Org)
+    L: Location (Certain City)
+    ST: State (Certain State)
     C: Country (UK)
 
     Returns an X509 object
@@ -582,17 +582,17 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     return cert
 
 
-def make_cacert(key, CN, Email="CA@CertMgr",
-            OU="CertMgr Dept", O="CertMgr Org", L="CertMgr City",
-            ST="CertMgr State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
+def make_cacert(key, CN, Email="CA@Certain",
+            OU="Certain Dept", O="Certain Org", L="Certain City",
+            ST="Certain State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
     """Generate a self-signed CA certificate.
 
     CN: Common Name
     Email: Email address of certificate owner
-    OU: Organisational Unit (CertMgr Dept)
-    O: Organisation (CertMgr Org)
-    L: Location (CertMgr City)
-    ST: State (CertMgr State)
+    OU: Organisational Unit (Certain Dept)
+    O: Organisation (Certain Org)
+    L: Location (Certain City)
+    ST: State (Certain State)
     C: Country (UK)
     lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
 
@@ -657,13 +657,13 @@ def key_from_file(keyfilename):
     """Read a private key from file.
 
     Note: M2Crypto provides no way to not set a passphrase on keys
-    By default, Certmgr uses the passphrase 'certmgr' throughout.
+    By default, Certmgr uses the passphrase 'certain' throughout.
 
     Returns an RSA object.
 
     """
 
-    return RSA.load_key(keyfilename, callback=lambda passphrase: 'certmgr')
+    return RSA.load_key(keyfilename, callback=lambda passphrase: 'certain')
 
 
 def cert_from_file(certfilename):
@@ -720,7 +720,7 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
     return os.fdopen(os.open(filename, flag, mode), 'w')
 
 
-def parse_config(configfile="/etc/certmgr/certmgr.cfg"):
+def parse_config(configfile="/etc/certain/certain.cfg"):
     """Parse the config file into 'config' and set up logging."""
 
     global config
@@ -740,10 +740,10 @@ def make_ca():
 
     #We never want to overwrite a key file, so load from file if one exists
     try:
-        #Use the default passphrase 'certmgr' on the key
+        #Use the default passphrase 'certain' on the key
         with creat(ca_key_file(), mode=0666) as f_key:
             key = make_key(config.getint('ca', 'Bits'))
-            f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
+            f_key.write(key.as_pem(callback=lambda passphrase: "certain"))
     except OSError, e:
         if e.errno != errno.EEXIST: # File exists
             raise
@@ -794,10 +794,10 @@ def make_cert():
 
     #We never want to overwrite a key file, so do nothing if it already exists.
     try:
-        #Use the default passphrase 'certmgr' on the key
+        #Use the default passphrase 'certain' on the key
         with creat(key_file(CN), mode=0666) as f_key:
             key = make_key(config.getint('cert', 'Bits'))
-            f_key.write(key.as_pem(callback=lambda passphrase: "certmgr"))
+            f_key.write(key.as_pem(callback=lambda passphrase: "certain"))
     except OSError, e:
         if e.errno != errno.EEXIST: # File exists
             raise
@@ -911,7 +911,7 @@ def pending_csrs():
 
 
 def send_csr(csrobj):
-    """Send csr to certmgr master."""
+    """Send csr to certain master."""
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
     log.info("Sending CSR %s.csr for signing", csrobj.get_subject().CN)
@@ -953,7 +953,7 @@ def send_csr(csrobj):
 
 
 def launch_daemon():
-    """Start the certmgr listening socket and/or expiry timers."""
+    """Start the certain listening socket and/or expiry timers."""
 
     cakey, cacert = check_cacerts()
 
@@ -1049,5 +1049,5 @@ log.addHandler(logconsole)
 
 #Calling config.* methods will call parse_config, reading the default
 #config file if the importing app hasn't previously
-#done certmgr.parse_config(configfile="...")
+#done certain.parse_config(configfile="...")
 config = LazyConfig()

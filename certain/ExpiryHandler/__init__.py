@@ -9,7 +9,7 @@ def dispatch(name, certobj):
     """
 
     try:
-        return __import__('certmgr.ExpiryHandler.' + name,
+        return __import__('certain.ExpiryHandler.' + name,
             fromlist=name).expire(certobj)
     except (ImportError, AttributeError):
         return expiryerror(name, certobj)

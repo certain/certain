@@ -2,8 +2,8 @@
 
 """Certificate Management System"""
 
-import certmgr
-from certmgr import daemon
+import certain
+import certain.daemon
 import os
 from optparse import OptionParser
 
@@ -13,13 +13,13 @@ def main():
     parser.add_option("-c", "--config",
                       dest="config_file",
                       help="Specifies the config file to use \
-                      if unset, defaults to /etc/certmgr/certmgr.cfg")
+                      if unset, defaults to /etc/certain/certain.cfg")
     parser.add_option("-m", "--makecert",
                       action="store_true", dest="makecert",
                       help="Setup a certificate and key on this system.")
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
-                      help="Start CertMgr Daemon.")
+                      help="Start Certain Daemon.")
     parser.add_option("-s", "--sign",
                       action="store_true", dest="sign",
                       help="View and sign queued CSRs.")
@@ -29,32 +29,32 @@ def main():
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
-                      default="/var/run/certmgr.pid")
+                      default="/var/run/certain.pid")
 
     options, args = parser.parse_args()
 
     if options.config_file:
-        certmgr.parse_config(options.config_file)
+        certain.parse_config(options.config_file)
 
-    certmgr.check_paths()
+    certain.check_paths()
 
     if options.makecert:
-        certmgr.make_cert()
+        certain.make_cert()
 
     if options.daemon:
-        if certmgr.config.get('global', 'LogLevel') != 'DEBUG':
-	    daemon.create_daemon()
+        if certain.config.get('global', 'LogLevel') != 'DEBUG':
+	    certain.daemon.create_daemon()
         with open(options.pidfile, 'w') as f:
             f.write(str(os.getpid()))
         try:
-            certmgr.launch_daemon()
+            certain.launch_daemon()
         finally:
             os.unlink(options.pidfile)
 
     if options.sign:
-        with certmgr.StoreHandler.dispatch(
-                certmgr.config.get('store', 'StoreType')) as store:
-            for csr in certmgr.pending_csrs():
+        with certain.StoreHandler.dispatch(
+                certain.config.get('store', 'StoreType')) as store:
+            for csr in certain.pending_csrs():
                 if not csr.csr:
                     dosign = raw_input(
                             "%s is not a CSR. Delete? [N/d]" % csr.csr_file
@@ -71,8 +71,8 @@ def main():
                     csr.remove()
 
     if options.get:
-        with certmgr.StoreHandler.dispatch(
-                certmgr.config.get('store', 'StoreType')) as store:
+        with certain.StoreHandler.dispatch(
+                certain.config.get('store', 'StoreType')) as store:
             store.fetch()
 
     if not any([options.makecert, options.daemon, options.sign, options.get]):

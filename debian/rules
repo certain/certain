@@ -10,10 +10,10 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_clean -k
-	mkdir -p $(CURDIR)/debian/certmgr
+	mkdir -p $(CURDIR)/debian/certain
 	dh_installdirs
 
-	# Add here commands to install the package into debian/certmgr
+	# Add here commands to install the package into debian/certain
 
 	$(MAKE) install prefix=$(CURDIR)/debian/tmp	
 

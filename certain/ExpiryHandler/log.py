@@ -1,4 +1,4 @@
-from ..certmgr import log
+from ..certain import log
 
 def expire(certobj):
     """Log cert expiry messages."""

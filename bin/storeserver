@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-import certmgr
-import certmgr.daemon
+import certain
+import certain.daemon
 import os
 from optparse import OptionParser
 
@@ -11,7 +11,7 @@ def main():
     parser.add_option("-c", "--config",
                       dest="config_file",
                       help="Specifies the config file to use "
-                      "if unset, defaults to /etc/certmgr/certmgr.cfg")
+                      "if unset, defaults to /etc/certain/certain.cfg")
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
@@ -23,14 +23,14 @@ def main():
     options, args = parser.parse_args()
 
     if options.config_file:
-        certmgr.parse_config(options.config_file)
+        certain.parse_config(options.config_file)
 
-    name = certmgr.config.get('store', 'StoreServer')
-    storeserver = __import__('certmgr.StoreServer.' + name, fromlist=name)
+    name = certain.config.get('store', 'StoreServer')
+    storeserver = __import__('certain.StoreServer.' + name, fromlist=name)
 
     # If the log level is not set to debug, make the server a daemon.
-    if certmgr.config.get('global', 'LogLevel') != 'DEBUG' or options.daemon:
-        certmgr.daemon.create_daemon()
+    if certain.config.get('global', 'LogLevel') != 'DEBUG' or options.daemon:
+        certain.daemon.create_daemon()
 
     with open(options.pidfile, 'w') as f:
         f.write(str(os.getpid()))

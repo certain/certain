@@ -2,18 +2,18 @@
 
 set -e
 
-groupadd --system --force certmgr >/dev/null 2>&1
-getent passwd certmgr >/dev/null 2>&1 || useradd --system -c "Certmgr daemon" --gid certmgr --shell /bin/false certmgr
+groupadd --system --force certain >/dev/null 2>&1
+getent passwd certain >/dev/null 2>&1 || useradd --system -c "Certain daemon" --gid certain --shell /bin/false certain
 
 
-for f in /etc/certmgr/CA /etc/certmgr/CA/private /etc/certmgr/private; do
+for f in /etc/certain/CA /etc/certain/CA/private /etc/certain/private; do
     if ! dpkg-statoverride --list $f > /dev/null; then
-       dpkg-statoverride --update --add certmgr certmgr 0700 $f
+       dpkg-statoverride --update --add certain certain 0700 $f
     fi
 done
 
-for f in /etc/certmgr/CSRCache /etc/certmgr/certs; do
+for f in /etc/certain/CSRCache /etc/certain/certs; do
     if ! dpkg-statoverride --list $f > /dev/null; then
-       dpkg-statoverride --update --add certmgr certmgr 0755 $f
+       dpkg-statoverride --update --add certain certain 0755 $f
     fi
 done

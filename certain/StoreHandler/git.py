@@ -1,6 +1,6 @@
 """Git StoreHandler plugin."""
 
-# .. should refer to 'certmgr'
+# .. should refer to 'certain'
 from ..StoreHandler import StoreBase
 from .. import config
 import dulwich

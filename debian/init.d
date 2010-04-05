@@ -1,20 +1,20 @@
 #!/bin/sh
 
 ### BEGIN INIT INFO
-# Provides: certmgr
+# Provides: certain
 # Required-Start: $remote_fs
 # Required-Stop: $remote_fs
 # Default-Start:  2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: start and stop certmgr daemon
-# Description:  CertMgr is an X509 Certificate Management Service
+# Short-Description: start and stop certain daemon
+# Description:  Certain is an X509 Certificate Management Service
 ### END INIT INFO
 
 . /lib/lsb/init-functions
 
-NAME="certmgr"
+NAME="certain"
 DAEMON=/usr/bin/${NAME}
-DESC="CertMgr X509 Certificate Management Service"
+DESC="Certain X509 Certificate Management Service"
 PIDFILE=/var/run/${NAME}.pid
 
 set -e
@@ -22,8 +22,8 @@ set -e
 test -x ${DAEMON} || exit 0
 
 
-[ -z "$SERVER_USER" ] && SERVER_USER=certmgr
-[ -z "$SERVER_GROUP" ] && SERVER_GROUP=certmgr
+[ -z "$SERVER_USER" ] && SERVER_USER=certain
+[ -z "$SERVER_GROUP" ] && SERVER_GROUP=certain
 
 if ! getent passwd | grep -q "^${SERVER_USER}:"; then
 log_daemon_msg "Server user does not exist!"

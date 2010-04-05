@@ -3,12 +3,12 @@
 import SocketServer
 import SimpleHTTPServer
 import os
-import certmgr
+import certain
 import errno
 
 
 def main():
-    dir = certmgr.config.get('webserver', 'WebDir')
+    dir = certain.config.get('webserver', 'WebDir')
     try:
         os.makedirs(dir)
     except OSError, e:
@@ -17,7 +17,7 @@ def main():
     os.chdir(dir)
     Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     httpd = SocketServer.TCPServer(("",
-        certmgr.config.getint('webserver', 'ServerPort')), Handler)
+        certain.config.getint('webserver', 'ServerPort')), Handler)
 
     httpd.serve_forever()
 

@@ -1,7 +1,7 @@
 [global]
 LogLevel = CRITICAL
-#Root path for all certmgr sub-directories
-RootPath = /etc/certmgr
+#Root path for all certain sub-directories
+RootPath = /etc/certain
 #Path to store CA certificate (master)
 CAPath = %(RootPath)s/CA
 #Path to store CA private key (master)
@@ -17,7 +17,7 @@ StoreDir = %(RootPath)s/store
 #Is this computer the master? (boolean)
 IsMaster = 1
 #Default address & port for Master
-MasterAddress = certmgr
+MasterAddress = certain
 MasterPort = 35182
 MasterSeqPort = 35183
 
@@ -38,7 +38,7 @@ NotifyFrequency = 86400
 #StoreType can be a space-separated list of one or more of:
 # none, svn, git, web, webserver, webdav, multiplex
 StoreType = svn
-StoreUrl = https://certmgr/certs
+StoreUrl = https://certain/certs
 #How often to poll the store for new certificates
 PollTimer = 3600
 # StoreServer is the server module which will be started by the 'storeserver'
@@ -48,18 +48,18 @@ StoreServer = webserver
 
 [ca]
 #Name of CA certificate
-CACert = certmgr.crt
+CACert = certain.crt
 #Name of CA key file
-CAKey = certmgr.key
+CAKey = certain.key
 #Name of CA CSR file (for optional manual signing of CA)
-CACSR = certmgr.csr
+CACSR = certain.csr
 Bits = 2048
-Email = CA@CertMgr
-CN = CertMgr CA
-OU = CertMgr Unit
-O = CertMgr Org
-L = CertMgr City
-ST = CertMgr State
+Email = CA@Certain
+CN = Certain CA
+OU = Certain Unit
+O = Certain Org
+L = Certain City
+ST = Certain State
 C = UK
 # 60 * 60 * 24  * 365 * 10 = 10 years
 CALifetime = 315360000
@@ -70,11 +70,11 @@ ExpiryDeadline = 608400
 [cert]
 Bits = 2048
 #CN defaults to fqdn
-Email = certmgr@CertMgr
-OU = CertMgr Unit
-O = CertMgr Org
-L = CertMgr City
-ST = CertMgr State
+Email = certain@Certain
+OU = Certain Unit
+O = Certain Org
+L = Certain City
+ST = Certain State
 C = UK
 # 60 * 60 * 24  * 365 = 1 year
 CertLifetime = 31536000
@@ -84,7 +84,7 @@ ExpiryDeadline = 608400
 
 [email]
 SMTPServer = smtp.example.com
-FromAddress = certmgr@example.com
+FromAddress = certain@example.com
 
 
 [webserver]

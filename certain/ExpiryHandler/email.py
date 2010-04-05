@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
-from ..certmgr import log
-from ..certmgr import config
+from ..certain import log
+from ..certain import config
 
 def expire(certobj):
     """Email a warning about cert expiry."""
