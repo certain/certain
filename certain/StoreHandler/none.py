@@ -20,4 +20,4 @@ class store(StoreBase):
         super(store, self).write(certobj)
 
     def __str__(self):
-        return "StoreHandler." + __name__ "()"
+        return "StoreHandler." + __name__  + "()"
