@@ -1,5 +1,6 @@
 """Handle different expiry actions."""
 
+
 def dispatch(name, certobj):
     """Dispatch a method to handle this type of expiry.
 
@@ -14,6 +15,7 @@ def dispatch(name, certobj):
     except (ImportError, AttributeError):
         return expiryerror(name, certobj)
     return expire(certobj)
+
 
 def expiryerror(name, certobj):
     """Error method - default to deal with unknown Notify types."""

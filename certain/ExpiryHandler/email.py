@@ -3,6 +3,7 @@ from email.mime.text import MIMEText
 from .. import log
 from .. import config
 
+
 def expire(certobj):
     """Email a warning about cert expiry."""
 
