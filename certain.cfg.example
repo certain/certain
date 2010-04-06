@@ -1,5 +1,12 @@
 [global]
+#LogLevel can be one of DEBUG, INFO, WARN, ERR, CRITICAL
 LogLevel = CRITICAL
+#File to write logs to
+LogFile = /var/log/certain.log
+#Size of logfile before rotation (bytes)
+LogSize = 2000000
+#Number of old rotated logfiles to keep
+LogRotate = 5
 #Root path for all certain sub-directories
 RootPath = /etc/certain
 #Path to store CA certificate (master)

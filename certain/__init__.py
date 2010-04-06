@@ -11,6 +11,7 @@ import threading
 import os
 from M2Crypto import m2, RSA, X509, EVP, ASN1
 import logging
+import logging.handlers
 from contextlib import closing
 import errno
 import tempfile
@@ -728,6 +729,14 @@ def parse_config(configfile="/etc/certain/certain.cfg"):
             "Unable to read Configuration File: %s" % (configfile, ))
     log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
     logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+
+    logfile = logging.handlers.RotatingFileHandler(
+    config.get('global', 'LogFile'),
+    maxBytes=config.getint('global', 'LogSize'),
+    backupCount=config.getint('global', 'LogRotate'))
+    logfile.setFormatter(logformat)
+    logfile.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    log.addHandler(logfile)
 
 
 def make_ca():
