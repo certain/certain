@@ -514,11 +514,11 @@ def make_csr(key, CN, Email="certain@certain",
 
     csr.set_subject_name(crt_subject(CN, Email, OU, O, L, ST, C))
 
-    pub = EVP.PKey(md='md5')
+    pub = EVP.PKey(md=config.get('global', 'Algorithm'))
     pub.assign_rsa(key, capture=False)
 
     csr.set_pubkey(pub)
-    csr.sign(pub, md='md5')
+    csr.sign(pub, md=config.get('global', 'Algorithm'))
 
     return csr
 
@@ -576,7 +576,7 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     cert.set_issuer_name(cacert.get_subject())
 
     #print cert.as_text()
-    cert.sign(capub, md='md5')
+    cert.sign(capub, md=config.get('global', 'Algorithm'))
 
     return cert
 
@@ -599,7 +599,7 @@ def make_cacert(key, CN, Email="CA@Certain",
 
     """
 
-    pub = EVP.PKey(md='md5')
+    pub = EVP.PKey(md=config.get('global', 'Algorithm'))
     pub.assign_rsa(key, capture=False)
     cacert = X509.X509()
     cacert.set_pubkey(pub)
@@ -626,7 +626,7 @@ def make_cacert(key, CN, Email="CA@Certain",
     cacert.add_ext(ext)
 
     #Sign the cert
-    cacert.sign(pub, md='md5')
+    cacert.sign(pub, md=config.get('global', 'Algorithm'))
 
     return cacert
 

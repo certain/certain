@@ -27,6 +27,9 @@ IsMaster = 1
 MasterAddress = certain
 MasterPort = 35182
 MasterSeqPort = 35183
+#Algorithm to use for signing certs
+#Can be one of sha1, md5, sha224, sha256, ripemd160
+Algorithm = sha256
 
 
 [master]
