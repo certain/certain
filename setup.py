@@ -9,8 +9,10 @@ setup(
     author = 'Matthew Richardson',
     author_email = 'm.richardson@ed.ac.uk',
     url = 'http://www.example.com/certain',
-    packages = find_packages('certain'),
-    package_dir = {'': 'certain'},
+    packages = ['certain',
+                'certain.StoreHandler',
+                'certain.StoreServer',
+                'certain.ExpiryHandler'],
     install_requires = ['dulwich', 'M2Crypto', 'git'],
     scripts = ['bin/certain', 'bin/storeserver'],
     data_files = [

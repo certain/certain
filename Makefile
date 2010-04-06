@@ -17,7 +17,7 @@ source:
 
 
 install:
-	$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE) 
+	$(PYTHON) setup.py install --prefix=/usr --root $(DESTDIR) $(COMPILE) 
 
 buildrpm:
 	$(PYTHON) setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
