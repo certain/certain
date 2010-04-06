@@ -17,7 +17,7 @@ class store(StoreBase):
         super(store, self).fetch()
 
     def write(self, certobj):
-        super(store, self).write()
+        super(store, self).write(certobj)
 
     def __str__(self):
         return "StoreHandler." + __name__ "()"

@@ -126,7 +126,7 @@ class store(StoreBase):
         self.repo.object_store.add_object(commit)
         self.repo.refs['refs/heads/master'] = commit.id
         self._unpack(tree, self.repo.path)
-        super(store, self).write()
+        super(store, self).write(certobj)
 
     def _unpack(self, tree, path='.'):
         for name, mode, sha1 in tree.iteritems():

@@ -40,7 +40,7 @@ class store(StoreBase):
         if not 200 <= resp.status < 300:
             raise Exception(
                 "Error writing to webdav server: %d" % resp.status)
-        super(store, self).write()
+        super(store, self).write(certobj)
 
     def __str__(self):
         return "StoreHandler." + __name__ + "()"

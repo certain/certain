@@ -65,7 +65,7 @@ class store(StoreBase):
                 self.client.add(certfile)
         except pysvn.ClientError:
             log.exception("Failed to add %s to repository", certfile)
-        super(store, self).write()
+        super(store, self).write(certobj)
 
     def __str__(self):
         return "StoreHandler." + __name__ + "()"

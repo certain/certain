@@ -120,7 +120,7 @@ class store(StoreBase):
             self.webdir, certobj.get_subject().CN) + ".crt"
         os.rename(f_crt.name, certfile)
 
-        super(store, self).write()
+        super(store, self).write(certobj)
 
     def __str__(self):
         return "StoreHandler." + __name__ + "()"
