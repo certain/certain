@@ -1,3 +1,5 @@
+"""Log expiry messages using the logging object."""
+
 from .. import log
 
 

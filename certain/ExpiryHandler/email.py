@@ -1,3 +1,7 @@
+"""Email expiry warnings."""
+
+#Need absolute imports as this module shares a name with a standard module
+from __future__ import absolute_import
 import smtplib
 from email.mime.text import MIMEText
 from .. import log

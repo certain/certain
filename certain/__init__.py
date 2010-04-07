@@ -61,6 +61,7 @@ def logexception(func):
 
     @wraps(func)
     def run(*args, **kwargs):
+        """Wrapper to log thread exceptions."""
         try:
             return func(*args, **kwargs)
         except Exception:
@@ -84,15 +85,16 @@ class CACertError(Exception):
 
 
 class VerboseExceptionFormatter(logging.Formatter):
+    """Custom formatting of logged exceptions."""
 
-    def formatException(self, ei):
+    def format_exception(self, ei):
         stack = []
         tb = ei[2]
 
         while tb:
             stack.append(tb.tb_frame)
             tb = tb.tb_next
-        s = logging.Formatter.formatException(self, ei)
+        s = logging.Formatter.format_exception(self, ei)
         s += "\nLocals by frame, innermost last"
         for frame in stack:
             s += "\nFrame %s in %s at line %s\n" % (frame.f_code.co_name,
@@ -152,6 +154,8 @@ class MsgHandlerThread(threading.Thread):
     @logexception
     @closing_by_name('sock')
     def run(self):
+        """Receive, verify and sign incoming CSRs."""
+
         sockfile = self.sock.makefile('rw', 0)
         msg = sockfile.readlines()
         sig = msg[0]
@@ -337,6 +341,7 @@ class Polling(object):
     def __init__(self, store, polltime):
         self.store = store
         self.polltime = polltime
+        self.timer = None
 
     def poll_timer(self):
         """Set up a timer to check the store."""
@@ -1029,6 +1034,8 @@ def check_cacerts(recurse=True):
 
 
 def check_paths():
+    """Check certificate paths, creating any missing ones."""
+
     log.debug("Checking (and creating) paths")
 
     for path, mode in [('RootPath', 0777),
