@@ -15,7 +15,7 @@ def expire(certobj):
     msg = MIMEText(
 """CA Expiry Warning
 
-CA %s expires at: %s
+CA "%s" expires at: %s
 A new CA will be generated automatically.
 
 If you require signing by a third party, please do this
