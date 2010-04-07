@@ -7,6 +7,14 @@ def dispatch(name, certobj):
     Pass a certificate object as the only parameter. These methods may
     return anything, but usually None.
 
+    @type name: string
+    @param name: NAme of ExpiryHandler Plugin
+
+    @type certobj: M2Crypto.X509.X509
+    @type param: Certificate to send expiry notification about
+
+    @return: ExpireHandler plugin object
+
     """
 
     try:

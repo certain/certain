@@ -9,7 +9,12 @@ from .. import config
 
 
 def expire(certobj):
-    """Email a warning about cert expiry."""
+    """Email a warning about cert expiry.
+
+    @type certobj: M2Crypto.X509.X509
+    @param certobj: Certificate object to send expiry notification about
+
+    """
 
     log.debug("Emailing about cert expiry")
     msg = MIMEText(
