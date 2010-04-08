@@ -11,7 +11,7 @@ def dispatch(name, certobj):
     @param name: NAme of ExpiryHandler Plugin
 
     @type certobj: M2Crypto.X509.X509
-    @type param: Certificate to send expiry notification about
+    @param certobj: Certificate to send expiry notification about
 
     @return: ExpireHandler plugin object
 
