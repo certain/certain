@@ -52,7 +52,8 @@ StoreUrl = https://certain/certs
 #How often to poll the store for new certificates
 PollTimer = 3600
 # StoreServer is the server module which will be started by the 'storeserver'
-# command
+# command.
+# Can be: webserver, gitdaemon
 StoreServer = webserver
 
 
@@ -102,3 +103,8 @@ FromAddress = certain@example.com
 WebDir = /var/www/html/certs
 #Port for webserver to listen on
 ServerPort = 32184
+
+
+[gitdaemon]
+# The master git repository.
+WorkDir = /var/lib/certain/store.git
