@@ -77,7 +77,7 @@ __all__ = ['pending_csrs',
            'make_key',
            'make_csr',
            'check_expiry',
-           'pidfile',]
+           'pidfile']
 
 
 def logexception(func):
@@ -903,9 +903,11 @@ def parse_config(configfile="/etc/certain/certain.cfg"):
 
     global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
+    #Read in the default config options
+    config.read(os.path.dirname(__file__) + "/certain.cfg.defaults")
+    #Try to read custom config options set by user
     if not config.read(configfile):
-        raise ConfigParser.Error(
-            "Unable to read Configuration File: %s" % (configfile, ))
+        log.warn("Unable to read Configuration File: %s", configfile)
     log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
     logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
 
