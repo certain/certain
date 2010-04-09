@@ -1,31 +1,53 @@
 #!/usr/bin/python
 
-"""Certificate Management System"""
+"""Certificate Management System
 
+This program provides the configuration and daemon functions of certain.
+It is intended to be run as a daemon. It provides a network service for
+clients to have a certificate issued (automatically, if they have a nearly-
+expired certificate or if this is desired always). It provides a second
+network service which is needed to atomically generate serial numbers for
+certificates.
+
+Additionally, it provides administrator functions to initialise the
+certificate authority and to approve certificate signing requests.
+
+It provides a method to update the cache of the central store. This should be
+used by programs or scripts which know they need up to date certificates.
+
+"""
+
+from __future__ import absolute_import
 import certain
 import certain.daemon
 import os
 from optparse import OptionParser
+import sys
+
+
+if sys.hexversion < 0x02060000:
+    print >>sys.stderr, "Error: Python 2.6 or greater required."
+    sys.exit(1)
 
 
 def main():
     parser = OptionParser()
     parser.add_option("-c", "--config",
                       dest="config_file",
-                      help="Specifies the config file to use \
-                      if unset, defaults to /etc/certain/certain.cfg")
+                      help="Specifies the config file to use. "
+                      "If unset, defaults to /etc/certain/certain.cfg")
     parser.add_option("-m", "--makecert",
                       action="store_true", dest="makecert",
                       help="Setup a certificate and key on this system.")
-    parser.add_option("-d", "--daemon",
-                      action="store_true", dest="daemon",
-                      help="Start Certain Daemon.")
     parser.add_option("-s", "--sign",
                       action="store_true", dest="sign",
                       help="View and sign queued CSRs.")
     parser.add_option("-g", "--get",
                       action="store_true", dest="get",
                       help="Update certificates from the central store.")
+    parser.add_option("-d", "--daemon",
+                      action="store_true", dest="daemon",
+                      help="Start Certain daemon.")
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
@@ -43,13 +65,9 @@ def main():
 
     if options.daemon:
         if certain.config.get('global', 'LogLevel') != 'DEBUG':
-	    certain.daemon.create_daemon()
-        with open(options.pidfile, 'w') as f:
-            f.write(str(os.getpid()))
-        try:
+            certain.daemon.create_daemon()
+        with certain.pidfile(options.pidfile):
             certain.launch_daemon()
-        finally:
-            os.unlink(options.pidfile)
 
     if options.sign:
         with certain.StoreHandler.dispatch(
@@ -62,7 +80,7 @@ def main():
                 else:
                     dosign = raw_input(
                             "Sign CSR: %s (CN=%s) [N/y/d(elete)]? " % (
-                                path.basename(csr.csr_filename),
+                                os.path.basename(csr.csr_filename),
                                 csr.csr.get_subject().CN)
                         ).strip().lower()
                 if csr.csr and dosign == 'y':

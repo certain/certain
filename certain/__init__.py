@@ -41,7 +41,7 @@ import os
 from M2Crypto import m2, RSA, X509, EVP, ASN1
 import logging
 import logging.handlers
-from contextlib import closing
+from contextlib import contextmanager, closing
 import errno
 import tempfile
 import abc
@@ -76,7 +76,8 @@ __all__ = ['pending_csrs',
            'make_cacert',
            'make_key',
            'make_csr',
-           'check_expiry']
+           'check_expiry',
+           'pidfile',]
 
 
 def logexception(func):
@@ -90,7 +91,6 @@ def logexception(func):
 
     @wraps(func)
     def run(*args, **kwargs):
-        """Wrapper to log thread exceptions."""
         try:
             return func(*args, **kwargs)
         except Exception:
@@ -116,14 +116,14 @@ class CACertError(Exception):
 class VerboseExceptionFormatter(logging.Formatter):
     """Custom formatting of logged exceptions."""
 
-    def format_exception(self, ei):
+    def formatException(self, ei):
         stack = []
         tb = ei[2]
 
         while tb:
             stack.append(tb.tb_frame)
             tb = tb.tb_next
-        s = logging.Formatter.format_exception(self, ei)
+        s = logging.Formatter.formatException(self, ei)
         s += "\nLocals by frame, innermost last"
         for frame in stack:
             s += "\nFrame %s in %s at line %s\n" % (frame.f_code.co_name,
@@ -1262,6 +1262,16 @@ def check_paths():
                 continue
             log.exception("Unable to create path: %s",
                 config.get('global', path))
+
+
+@contextmanager
+def pidfile(path):
+    with open(path, 'w') as f:
+        f.write(str(os.getpid()) + '\n')
+    try:
+        yield
+    finally:
+        os.unlink(path)
 
 
 log = logging.getLogger(__name__)

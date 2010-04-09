@@ -1,24 +1,37 @@
 #!/usr/bin/python
 
+"""Certificate Management System.
+
+This program provides a server to distribute the delivered certificates to the
+clients.
+
+"""
+
+from __future__ import absolute_import
 import certain
 import certain.daemon
-import os
 from optparse import OptionParser
+import sys
+
+
+if sys.hexversion < 0x02060000:
+    print >>sys.stderr, "Error: Python 2.6 or greater required."
+    sys.exit(1)
 
 
 def main():
     parser = OptionParser()
     parser.add_option("-c", "--config",
                       dest="config_file",
-                      help="Specifies the config file to use "
-                      "if unset, defaults to /etc/certain/certain.cfg")
+                      help="Specifies the config file to use. "
+                      "If unset, defaults to /etc/certain/certain.cfg")
+    parser.add_option("-d", "--daemon",
+                      action="store_true", dest="daemon",
+                      help="Start StoreServer daemon.")
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
                       default="/var/run/storeserver.pid")
-    parser.add_option("-d", "--daemon",
-                      action="store_true", dest="daemon",
-                      help="Start StoreServer daemon.")
 
     options, args = parser.parse_args()
 
@@ -32,12 +45,8 @@ def main():
     if certain.config.get('global', 'LogLevel') != 'DEBUG' or options.daemon:
         certain.daemon.create_daemon()
 
-    with open(options.pidfile, 'w') as f:
-        f.write(str(os.getpid()))
-    try:
+    with certain.pidfile(options.pidfile):
         storeserver.main()
-    finally:
-        os.unlink(options.pidfile)
 
 if __name__ == "__main__":
     main()

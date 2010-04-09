@@ -21,11 +21,15 @@ def dispatch(name, certobj):
         expire = __import__(__name__ + '.' + name,
             fromlist=name).expire
     except (ImportError, AttributeError):
-        return expiryerror(name)
+        return expiryerror(name, certobj)
     return expire(certobj)
 
 
-def expiryerror(name):
+def expiryerror(name, certobj):
     """Error method - default to deal with unknown Notify types."""
 
-    print "Unknown notification type: " + name
+    # This cannot be imported at initialisation, as this module is loaded
+    # before the log (LazyConfig) object has been created.
+    from .. import log
+    log.error('Unknown notification type "%s", expiry of "%s" went unnoticed.' %
+        (name, certobj.get_subject().CN))
