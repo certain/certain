@@ -1,6 +1,35 @@
 #!/usr/bin/python
 
-"""Certificate Management System"""
+"""Certain X509 Certificate Management Service.
+
+Certain provides a master which generates CA Certificates,
+and signs CSR requests received over the network from clients.
+
+Certain provides manual and automatic certificate verification methods,
+and a number of 'plugins' for both storing signed certificates, and notifying
+of CA expiry.
+
+
+@author: Matthew Richardson
+@author: Bruce Duncan
+
+@copyright: Copyright (c) 2009-2010 Matthew Richardson, Bruce Duncan
+
+@license: Redistribution and use in source and binary forms, with or without
+modification, are permitted under the terms of the BSD License.
+THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+"""
 
 import sys
 import socket
@@ -432,9 +461,32 @@ def get_network_seq():
 def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
     """Returns an X509_Name object populated with appropriate values.
 
-    Note! Subject fields are hierarchical.  (hierarchy reads L->R in kwargs)
+    @note: Subject fields are hierarchical.  (hierarchy reads L->R in kwargs)
     If CN is not set, all fields  other fields will be ignored,
     If OU is unset, O, L, ST, C are ignored...
+
+    @type CN: string
+    @param CN: Common Name (aka CA hostname)
+
+    @type Email: string
+    @param Email: Email address of certificate owner
+
+    @type OU: string
+    @param OU: Organisational Unit
+
+    @type O: string
+    @param O: Organisation
+
+    @type L: string
+    @param L: Location
+
+    @type ST: string
+    @param ST: State
+
+    @type C: string
+    @param C: Country
+
+    @return: M2Crypto.X509.X509_Name
 
     """
 
@@ -459,7 +511,15 @@ def crt_subject(CN=None, Email=None, OU=None, O=None, L=None, ST=None, C=None):
 
 
 def sign_data(data):
-    """Sign data using the private key, return a base64 string."""
+    """Sign data using the private key, return a base64 string.
+
+    @type data: string
+    @param data: String to be signed.
+
+    @rtype: base64.b64encode
+    @return: base64 string representing signed data
+
+    """
 
     signingkey = EVP.load_key(key_file(config.get('cert', 'CN')),
                               callback=lambda passphrase: 'certain')
@@ -471,9 +531,18 @@ def sign_data(data):
 
 
 def verify_data(sig, data, pub):
-    """Verify a signature (base64 object), return the contents.
+    """Verify a signature based on a given public key.
 
-    Returns True if signature is valid
+    @type sig: base64.b64encode
+    @param sig: base64 encoded signature
+
+    @type data: string
+    @param data: string signed by sig
+
+    @type pub: M2Crypto.X509.X509
+    @param pub: Public key of the signer
+
+    @return: True if signature is valid
 
     """
 
@@ -486,11 +555,13 @@ def verify_data(sig, data, pub):
 
 
 def make_key(bits=2048):
-    """Create RSA key
+    """Create an RSA key
 
-    bits: Bits for RSA key (defaults to 2048)
+    @type bits: int
+    @param bits: Bits for RSA key (defaults to 2048)
 
-    Returns an RSA object
+    @rtype: M2Crypto.X509.RSA
+    @return: Returns an RSA object
 
     """
 
@@ -502,16 +573,31 @@ def make_csr(key, CN, Email="certain@certain",
              L="Certain City", ST="Certain State", C="UK"):
     """Make a certificate request from an RSA key
 
-    key: String containing key
-    CN: Common Name (aka CA hostname)
-    Email: Email address of certificate owner
-    OU: Organisational Unit (Certain Dept)
-    O: Organisation (Certain Org)
-    L: Location (Certain City)
-    ST: State (Certain State)
-    C: Country (UK)
+    @type key: M2Crypto.RSA.RSA
+    @param key: RSA Key object
 
-    Returns an X509 object
+    @type CN: string
+    @param CN: Common Name (aka CA hostname)
+
+    @type Email: string
+    @param Email: Email address of certificate owner
+
+    @type OU: string
+    @param OU: Organisational Unit
+
+    @type O: string
+    @param O: Organisation
+
+    @type L: string
+    @param L: Location
+
+    @type ST: string
+    @param ST: State
+
+    @type C: string
+    @param C: Country
+
+    @return: M2Crypto.X509.Request
 
     """
 
@@ -531,12 +617,12 @@ def make_csr(key, CN, Email="certain@certain",
 def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     """Sign certificate request.
 
-    cakey: CA key object
-    cacert: CA Public Certificate object
-    csr: Certificate Request string
-    lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
+    @param cakey: CA key object
+    @param cacert: CA Public Certificate object
+    @param csr: Certificate Request string
+    @param lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
 
-    Returns X509 object
+    @rtype: M2Crypto.X509.X509
 
     """
 
@@ -591,16 +677,35 @@ def make_cacert(key, CN, Email="CA@Certain",
             ST="Certain State", C="UK", lifetime=60 * 60 * 24 * 365 * 10):
     """Generate a self-signed CA certificate.
 
-    CN: Common Name
-    Email: Email address of certificate owner
-    OU: Organisational Unit (Certain Dept)
-    O: Organisation (Certain Org)
-    L: Location (Certain City)
-    ST: State (Certain State)
-    C: Country (UK)
-    lifetime: Certificate lifetime in seconds (60*60*24*365*10 = 10 years)
+    @type key: M2Crypto.RSA.RSA
+    @param key: RSA Key object
 
-    Returns an X509 (CA) cert object.
+    @type CN: string
+    @param CN: Common Name (aka CA hostname)
+
+    @type Email: string
+    @param Email: Email address of certificate owner
+
+    @type OU: string
+    @param OU: Organisational Unit
+
+    @type O: string
+    @param O: Organisation
+
+    @type L: string
+    @param L: Location
+
+    @type ST: string
+    @param ST: State
+
+    @type C: string
+    @param C: Country
+
+    @type lifetime: int
+    @param lifetime: Certificate lifetime in seconds
+
+    @rtype: M2Crypto.X509.X509
+    @return: CA certificate
 
     """
 
@@ -660,10 +765,13 @@ def ca_csr_file():
 def key_from_file(keyfilename):
     """Read a private key from file.
 
-    Note: M2Crypto provides no way to not set a passphrase on keys
+    @note: M2Crypto provides no way to not set a passphrase on keys
     By default, Certain uses the passphrase 'certain' throughout.
 
-    Returns an RSA object.
+    @type keyfilename: string
+    @param keyfilename: Name of private key file to read
+
+    @rtype: M2Crypto.X509.RSA
 
     """
 
@@ -671,43 +779,92 @@ def key_from_file(keyfilename):
 
 
 def cert_from_file(certfilename):
-    """Read a certificate from file."""
+    """Read a certificate from file.
+
+    @type certfilename: string
+    @param certfilename: Name of certificate file to read
+
+    @rtype: M2Crypto.X509.X509
+
+    """
 
     return X509.load_cert(certfilename)
 
 
 def csr_from_file(csrfilename):
-    """Read a certificate request from file."""
+    """Read a certificate request from file.
+
+    @type csrfilename: string
+    @param csrfilename: Name of certificate file to read
+
+    @rtype: M2Crypto.X509.Request
+
+    """
 
     return X509.load_request(csrfilename)
 
 
 def cert_file(name):
-    """Return full path of cert file from config."""
+    """Return full path of cert file from config.
+
+    @type name: string
+    @param name: Name of certificate file
+
+    rtype: string
+
+    """
 
     return os.path.join(config.get('global', 'CertPath'), name) + ".crt"
 
 
 def cert_store_file(name):
-    """Return full path of central store cert file from config."""
+    """Return full path of central store cert file from config.
+
+    @type name: string
+    @param name: Name of certificate file
+
+    rtype: string
+
+    """
 
     return os.path.join(config.get('global', 'StoreDir'), name) + ".crt"
 
 
 def key_file(name):
-    """Return full path of key file from config."""
+    """Return full path of key file from config.
+
+    @type name: string
+    @param name: Name of certificate file
+
+    rtype: string
+
+    """
 
     return os.path.join(config.get('global', 'PrivatePath'), name) + ".key"
 
 
 def csr_file(name):
-    """Return full path of csr file from config."""
+    """Return full path of csr file from config.
+
+    @type name: string
+    @param name: Name of certificate file
+
+    rtype: string
+
+    """
 
     return os.path.join(config.get('global', 'CertPath'), name) + ".csr"
 
 
 def csr_cache_file(name):
-    """Return full path of csr file from config."""
+    """Return full path of csr file from config.
+
+    @type name: string
+    @param name: Name of certificate file
+
+    rtype: string
+
+    """
 
     return os.path.join(config.get('global', 'CSRCache'), name) + ".csr"
 
@@ -720,12 +877,29 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
     doesn't already exist. If it does, expect an OSError exception "e"
     with e.errno == errno.EEXIST.
 
+    @type filename: string
+    @param filename: File to create
+
+    @param flag: flags for file opening
+
+    @type mode: int
+    @param mode: File Permissions mode
+
+    rtype: file
+    return: Open file object
+
     """
+
     return os.fdopen(os.open(filename, flag, mode), 'w')
 
 
 def parse_config(configfile="/etc/certain/certain.cfg"):
-    """Parse the config file into 'config' and set up logging."""
+    """Parse the config file into 'config' and set up logging.
+
+    @type configfile: string
+    @param configfile: Path to the configuration file
+
+    """
 
     global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
@@ -745,7 +919,12 @@ def parse_config(configfile="/etc/certain/certain.cfg"):
 
 
 def make_ca():
-    """Generate a CA and CSR file for the master."""
+    """Generate a CA and CSR file for the master.
+
+    @rtype: M2Crypto.X509.X509
+    @return: CA Certificate
+
+    """
 
     log.info("Generating CA certificates for master")
     CN = config.get('ca', 'CN')
@@ -797,7 +976,12 @@ def make_ca():
 
 
 def make_cert():
-    """Create Certificate key and csr files, then send to master."""
+    """Create Certificate key and csr files, then send to master.
+
+    @return: M2Crypto.X509.X509 Certificate Object, or None
+    @see: send_csr
+
+    """
 
     #Make client key and CSR if needed
     CN = config.get('cert', 'CN')
@@ -833,7 +1017,11 @@ def make_cert():
 def check_expiry(certobj):
     """Return expiry time in seconds.
 
-    certobj: OpenSSL X509 Object
+    @type certobj: M2Crypto.X509.X509
+    @param certobj: Certificate to obtain expiry time from
+
+    @rtype: int
+    @return: Remaining lifetime of the certificate in seconds
 
     """
 
@@ -857,13 +1045,23 @@ class CSRChoice(object):
     def store(self, cakey=None, cacert=None, store=None):
         """Sign and store the CSR.
 
-        If HostVerify is set in the config file, may raise HostVerifyError.
-        If cakey or cacert are not given, try to get them. This may raise
-        CACertError.
-        If store is not given, try to get it. If this fails it will ONLY LOG A
-        WARNING. Otherwise, the default store (given in the config file) will
-        be setup, written to and checkpointed. Any of these steps may raise an
-        exception.
+        @note: If HostVerify is set in the config file, may raise
+        HostVerifyError.
+        @note: If cakey or cacert are not given, try to get them. This may
+        raise CACertError.
+        @note: If store is not given, try to get it. If this fails it will
+        ONLY LOG A WARNING. Otherwise, the default store (given in the config
+        file) will be setup, written to and checkpointed. Any of these steps
+        may raise an exception.
+
+        @type cakey: M2Crypto.X509.RSA
+        @param cakey: CA private key for signing
+
+        @type cacert: M2Crypto.X509.X509
+        @param cacert: CA public key for signing
+
+        @type store: certain.StoreHandler
+        @param store: Store object derived from StoreHandler
 
         """
 
@@ -923,7 +1121,15 @@ def pending_csrs():
 
 
 def send_csr(csrobj):
-    """Send csr to certain master."""
+    """Send csr to certain master.
+
+    @type csrobj: X509.Request
+    @param csrobj: CSR to be sent to master
+
+    @rtype: M2Crypto.X509.X509
+    @return: Certificate (if one is received from the master)
+
+    """
 
     msg = "%s\n%s\n" % (sign_data(csrobj.as_pem()), csrobj.as_pem())
     log.info("Sending CSR %s.csr for signing", csrobj.get_subject().CN)
@@ -1017,7 +1223,12 @@ def launch_daemon():
 
 
 def check_cacerts(recurse=True):
-    """Check for existence of CA cert and key file."""
+    """Check for existence of CA cert and key file.
+
+    @note: recurse is used to flag a re-run the method after calling make_ca
+    to create a key and cert if they failed to be opened the first time round.
+
+    """
 
     try:
         cakey = key_from_file(ca_key_file())
