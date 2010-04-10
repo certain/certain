@@ -900,6 +900,9 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
 
     global config
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
+    #Read in the default config options
+    config.read(os.path.dirname(__file__) + "/certain.cfg.defaults")
+    #Try to read custom config options set by user
     if not config.read(configfile):
         raise ConfigParser.Error(
             "Unable to read Configuration File: %s" % (configfile, ))
