@@ -10,7 +10,7 @@ B<key> = value
 
 =head1 DESCRIPTION
 
-This file contains the configuration options for certain.  Each line contains a single option, these options being divided into sections within the configuration file.  Qutoes should not be used on configuration values, and leading spaces after the '=' will be stripped.  Comments are indicated with a hash sign ('B<#>').
+This file contains the configuration options for certain.  Each line contains a single option, these options being divided into sections within the configuration file.  Quotes should not be used on configuration values, and leading spaces after the '=' will be stripped.  Comments are indicated with a hash sign ('B<#>').
 
 =head1 OPTIONS
 
@@ -114,7 +114,7 @@ Should the Certificate CN field match the hostname that sent the CSR? (boolean)
 
 B<ExpiryNotifiers = log email>
 
-Types of notifictions to send when CA is due to expire.
+Types of notifications to send when CA is due to expire.
 
 A space-separated list of: B<log email>
 

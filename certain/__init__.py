@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """Certain X509 Certificate Management Service.
 
 Certain provides a master which generates CA Certificates,
@@ -54,6 +52,8 @@ from . import StoreHandler
 from . import ExpiryHandler
 
 
+DEFAULT_CONFIG_FILE = "/etc/certain/certain.cfg"
+
 __all__ = ['pending_csrs',
            'sign_csr',
            'send_csr',
@@ -77,7 +77,7 @@ __all__ = ['pending_csrs',
            'make_key',
            'make_csr',
            'check_expiry',
-           'pidfile',]
+           'pidfile', ]
 
 
 def logexception(func):
@@ -135,10 +135,8 @@ class VerboseExceptionFormatter(logging.Formatter):
                 #printer! Calling str() on an unknown object could cause an
                 #error we don't want.
                 try:
-                    s += str(type(value)) + ' '
-                    s += str(value)
+                    s += str(type(value)) + ' ' + str(value)
                 except Exception, e:
-                    s += str(e)
                     s += "<ERROR WHILE PRINTING VALUE>"
                 s += '\n'
         return s
@@ -618,8 +616,8 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     """Sign certificate request.
 
     @param cakey: CA key object
-    @param cacert: CA Public Certificate object
-    @param csr: Certificate Request string
+    @param cacert: CA public certificate object
+    @param csr: Certificate request string
     @param lifetime: Lifetime of signed cert in seconds (60*60*24*365 = 1 year)
 
     @rtype: M2Crypto.X509.X509
@@ -666,7 +664,6 @@ def sign_csr(cakey, cacert, csr, lifetime=60 * 60 * 24 * 365):
     #Set issuer on cert
     cert.set_issuer_name(cacert.get_subject())
 
-    #print cert.as_text()
     cert.sign(capub, md=config.get('global', 'Algorithm'))
 
     return cert
@@ -810,7 +807,7 @@ def cert_file(name):
     @type name: string
     @param name: Name of certificate file
 
-    rtype: string
+    @rtype: string
 
     """
 
@@ -823,7 +820,7 @@ def cert_store_file(name):
     @type name: string
     @param name: Name of certificate file
 
-    rtype: string
+    @rtype: string
 
     """
 
@@ -836,7 +833,7 @@ def key_file(name):
     @type name: string
     @param name: Name of certificate file
 
-    rtype: string
+    @rtype: string
 
     """
 
@@ -849,7 +846,7 @@ def csr_file(name):
     @type name: string
     @param name: Name of certificate file
 
-    rtype: string
+    @rtype: string
 
     """
 
@@ -862,7 +859,7 @@ def csr_cache_file(name):
     @type name: string
     @param name: Name of certificate file
 
-    rtype: string
+    @rtype: string
 
     """
 
@@ -873,9 +870,9 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
     """A thin wrapper around os.open and os.fdopen to return a file-like
     object.
 
-    With the default arguments, ask for a file to be created only if it
-    doesn't already exist. If it does, expect an OSError exception "e"
-    with e.errno == errno.EEXIST.
+    With the default arguments, ask for a file to be created only if it doesn't
+    already exist. If it does, expect an OSError exception "e" with
+    e.errno == errno.EEXIST.
 
     @type filename: string
     @param filename: File to create
@@ -883,17 +880,17 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
     @param flag: flags for file opening
 
     @type mode: int
-    @param mode: File Permissions mode
+    @param mode: File permissions mode
 
-    rtype: file
-    return: Open file object
+    @rtype: file
+    @return: Open file object
 
     """
 
     return os.fdopen(os.open(filename, flag, mode), 'w')
 
 
-def parse_config(configfile="/etc/certain/certain.cfg"):
+def parse_config(configfile=DEFAULT_CONFIG_FILE):
     """Parse the config file into 'config' and set up logging.
 
     @type configfile: string
@@ -906,16 +903,24 @@ def parse_config(configfile="/etc/certain/certain.cfg"):
     if not config.read(configfile):
         raise ConfigParser.Error(
             "Unable to read Configuration File: %s" % (configfile, ))
-    log.setLevel(getattr(logging, config.get('global', 'LogLevel')))
-    logconsole.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+    loglevel = getattr(logging, config.get('global', 'LogLevel'))
+    if loglevel == logging.DEBUG:
+        logformat = VerboseExceptionFormatter('%(levelname)s %(message)s')
+    else:
+        logformat = logging.Formatter('%(levelname)s %(message)s')
 
+    for handler in log.handlers:
+        if isinstance(handler, logging.RotatingFileHandler):
+            log.removeHandler(handler)
+            continue
+        handler.setLevel(loglevel)
+        handler.setFormatter(logformat)
     logfile = logging.handlers.RotatingFileHandler(
-    config.get('global', 'LogFile'),
-    maxBytes=config.getint('global', 'LogSize'),
-    backupCount=config.getint('global', 'LogRotate'))
-    logfile.setFormatter(logformat)
-    logfile.setLevel(getattr(logging, config.get('global', 'LogLevel')))
+        config.get('global', 'LogFile'),
+        maxBytes=config.getint('global', 'LogSize'),
+        backupCount=config.getint('global', 'LogRotate'))
     log.addHandler(logfile)
+    log.setLevel(loglevel)
 
 
 def make_ca():
@@ -1275,12 +1280,13 @@ def pidfile(path):
 
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.CRITICAL)
-logformat = VerboseExceptionFormatter('%(levelname)s %(message)s')
+log.setLevel(logging.ERROR)
+logformat = logging.Formatter('%(levelname)s %(message)s')
 logconsole = logging.StreamHandler()
 logconsole.setFormatter(logformat)
 logconsole.setLevel(logging.CRITICAL)
 log.addHandler(logconsole)
+del logformat, logconsole
 
 #Calling config.* methods will call parse_config, reading the default
 #config file if the importing app hasn't previously

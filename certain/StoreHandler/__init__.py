@@ -41,10 +41,13 @@ class StoreBase(object):
 def storeerror(name):
     """Error method. Default for getattr to deal with unknown StoreType."""
 
-    print "Unknown StoreType: " + name
+    # This cannot be imported at initialisation, as this module is loaded
+    # before the log object has been created.
+    from .. import log
+    log.error('Unknown StoreType: "%s"' % (name, ))
 
 
-def dispatch(name, errorfunc=storeerror):
+def dispatch(name):
     """Dispatch a store object to handle this type of Store.
 
     Returns an object of the appropriate type, or None. Also logs a message

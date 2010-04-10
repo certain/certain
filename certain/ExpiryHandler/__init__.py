@@ -8,12 +8,12 @@ def dispatch(name, certobj):
     return anything, but usually None.
 
     @type name: string
-    @param name: NAme of ExpiryHandler Plugin
+    @param name: Name of ExpiryHandler plugin
 
     @type certobj: M2Crypto.X509.X509
     @param certobj: Certificate to send expiry notification about
 
-    @return: ExpireHandler plugin object
+    @return: ExpiryHandler plugin object
 
     """
 
@@ -29,7 +29,7 @@ def expiryerror(name, certobj):
     """Error method - default to deal with unknown Notify types."""
 
     # This cannot be imported at initialisation, as this module is loaded
-    # before the log (LazyConfig) object has been created.
+    # before the log object has been created.
     from .. import log
     log.error('Unknown notification type "%s", expiry of "%s" went unnoticed.' %
         (name, certobj.get_subject().CN))
