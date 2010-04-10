@@ -899,10 +899,13 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
     """
 
     global config
+    # This is the only default defined in the code.
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
-    #Read in the default config options
-    config.read(os.path.dirname(__file__) + "/certain.cfg.defaults")
-    #Try to read custom config options set by user
+    # Read in the default config options
+    if not config.read(os.path.join(os.path.dirname(__file__),
+            "certain.cfg.defaults")):
+        raise ConfigParser.Error("Unable to read defaults file. "
+            "Try reinstalling the package.")
     if not config.read(configfile):
         raise ConfigParser.Error(
             "Unable to read Configuration File: %s" % (configfile, ))

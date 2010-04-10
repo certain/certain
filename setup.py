@@ -4,11 +4,11 @@ from setuptools import setup, find_packages
 
 #Copy certain.cfg.defaults to certain.cfg
 with open('etc/certain.cfg', 'w') as c:
-    c.write("Certain's default configuration given below.\n" \
-            "Uncomment lines as appropriate to change.\n\n")
+    c.write("# Certain's default configuration is given below.\n"
+            "# Uncomment lines as appropriate to change.\n\n")
     with open('certain/certain.cfg.defaults') as f:
         for line in f:
-            c.write("## " + line)
+            c.write("#" + line)
 
 setup(
     name = 'certain',
@@ -27,4 +27,3 @@ setup(
         ('/etc/certain', ['etc/certain.cfg'])
         ]
     )
-
