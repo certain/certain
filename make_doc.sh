@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #$@ allows insertion of extra options, e.g --pdf
-epydoc -v --name Certain $@ certain
+epydoc -v -o apidoc --name Certain $@ certain
 
 #Make man pages
 pod2man man/certain.pod >man/certain.8
