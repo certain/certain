@@ -1,9 +1,18 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
+import errno
+import os
+
+
+try:
+    os.mkdir('etc/certain')
+except OSError, e:
+    if e.errno != errno.EEXIST:
+        raise
 
 #Copy certain.cfg.defaults to certain.cfg
-with open('etc/certain.cfg', 'w') as c:
+with open('etc/certain/certain.cfg', 'w') as c:
     c.write("# Certain's default configuration is given below.\n"
             "# Uncomment lines as appropriate to change.\n\n")
     with open('certain/certain.cfg.defaults') as f:
@@ -24,6 +33,6 @@ setup(
     scripts = ['bin/certain', 'bin/storeserver'],
     data_files = [
         ('/etc/init.d', ['etc/init.d/certain']),
-        ('/etc/certain', ['etc/certain.cfg'])
+        ('/etc/certain', ['etc/certain/certain.cfg'])
         ]
     )
