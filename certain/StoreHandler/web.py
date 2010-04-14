@@ -122,5 +122,9 @@ class store(StoreBase):
 
         super(store, self).write(certobj)
 
+    def remove(self, CN):
+        os.unlink(os.path.join(self.webdir, CN + ".crt"))
+        super(store, self).remove(certobj)
+
     def __str__(self):
         return "StoreHandler." + __name__ + "()"

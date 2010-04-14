@@ -42,5 +42,13 @@ class store(StoreBase):
                 "Error writing to webdav server: %d" % resp.status)
         super(store, self).write(certobj)
 
+    def remove(self, CN):
+        self.web.request('DELETE', CN + ".crt")
+        resp = self.web.getresponse()
+        if not 200 <= resp.status < 300:
+            raise Exception(
+                "Error deleting on webdav server: %d" % resp.status)
+        super(store, self).remove(CN)
+
     def __str__(self):
         return "StoreHandler." + __name__ + "()"
