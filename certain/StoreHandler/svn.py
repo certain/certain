@@ -67,5 +67,13 @@ class store(StoreBase):
             log.exception("Failed to add %s to repository", certfile)
         super(store, self).write(certobj)
 
+    def remove(self, CN):
+        try:
+            with self.lock:
+                self.client.remove(os.path.join(self.storedir, CN + ".crt"))
+        except pysvn.ClientError:
+            log.exception("Failed to remove %s from repository", CN + ".crt")
+        super(store, self).remove(CN)
+
     def __str__(self):
         return "StoreHandler." + __name__ + "()"
