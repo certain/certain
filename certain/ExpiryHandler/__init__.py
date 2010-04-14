@@ -1,4 +1,12 @@
-"""Handle different expiry actions."""
+"""ExpiryHandler provides a number of plugins which can be called
+when a CA certificate is due to expire.
+
+There are currently 2 plugins available: ``log`` and ``email``.
+
+All ExpiryHandler plugins have an ``expire`` method which is called
+when the plugin is used.
+
+"""
 
 
 def dispatch(name, certobj):
@@ -31,5 +39,6 @@ def expiryerror(name, certobj):
     # This cannot be imported at initialisation, as this module is loaded
     # before the log object has been created.
     from .. import log
-    log.error('Unknown notification type "%s", expiry of "%s" went unnoticed.' %
+    log.error(
+        'Unknown notification type "%s", expiry of "%s" went unnoticed.' %
         (name, certobj.get_subject().CN))
