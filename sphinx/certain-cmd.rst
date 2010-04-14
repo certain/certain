@@ -9,7 +9,7 @@
 Synopsis
 ========
 
-The command-line tool is used to control the daemon on the master, and send and receive certificate requests and signed certificates on the clients:
+The command-line tool is used to control the daemon on the master and send and receive certificate requests and signed certificates on the clients.
 
 Syntax
 ======
@@ -18,7 +18,7 @@ Syntax
 
 **certain --daemon**
 
-**certain [--get] [--makecert] [--sign]**
+**certain --get | --makecert | --sign**
 
 
 Options
@@ -59,10 +59,8 @@ Options
 Files
 =====
 
+The default configuration file for Certain is:
+
 ``/etc/certain/certain.cfg``
 
 
-See Also
-========
-
-``certain.cfg(5)``
