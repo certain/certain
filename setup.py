@@ -23,6 +23,29 @@ if sys.argv[1] == 'install':
             for line in f:
                 c.write("#" + line)
 
+    data_files = []
+
+    #Generate a list of sphinx doc paths to install
+    sphinxfiles = []
+    for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
+        #strip off the initial 'sphinx/build/' for tgt path creation
+        subdir = dirpath[13:]
+        for name in files:
+            sphinxfiles.append(
+                (os.path.join('share', 'doc', 'certain', 'html', subdir),
+                 [os.path.join(dirpath, name)]))
+
+    #Add data files to array
+    data_files.extend(sphinxfiles)
+    data_files.append(
+        (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
+    data_files.append(
+        (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
+    data_files.append(
+        (os.path.join('share', 'man', 'man8'), ['man/certain.8']))
+    data_files.append(
+        (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']))
+
 setup(
     name = 'certain',
     version = '0.1.0',
@@ -35,12 +58,5 @@ setup(
     package_data = {'': ['certain.cfg.defaults']},
     install_requires = ['dulwich', 'M2Crypto', 'git'],
     scripts = ['bin/certain', 'bin/storeserver'],
-    data_files = [
-        (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']),
-        (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']),
-        (os.path.join('share', 'man', 'man8'), ['man/certain.8']),
-        (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']),
-        (os.path.join('share', 'doc', 'certain', 'html'),
-             [os.path.join('apidoc', name) for name in os.listdir('apidoc')]),
-        ]
+    data_files = data_files
     )
