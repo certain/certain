@@ -8,17 +8,20 @@ import os
 
 if sys.argv[1] == 'install':
 
-    #Build Rest config options from defaults
+    #Build reSt config options from defaults
+    comment = []
     with open('sphinx/config.rst', 'w') as rst:
         with open('certain/certain.cfg.defaults') as cfg:
-            for line in cfg.readlines():
+            for line in cfg:
                 if line.startswith('['):
                     rst.write(line + "------------------------------\n\n")
+                elif line.startswith('# note: '):
+                    rst.write('.. note:: ' + line[8:])
                 elif line.startswith('#'):
-                    comment = line[1:]
-                    rst.write("\n\t\t" + comment)
+                    comment += ['\n\t\t' + line[1:]]
                 else:
-                    rst.write("\t" + line)
+                    rst.write("\t" + line + ''.join(comment))
+                    comment = []
 
     #Build sphinx documentation
     os.system('sphinx-build -b html sphinx ' + os.path.join('sphinx', 'build'))
@@ -40,31 +43,31 @@ if sys.argv[1] == 'install':
                 else:
                     c.write("#" + line)
 
-    data_files = []
+data_files = []
 
-    #Generate a list of sphinx doc paths to install
-    sphinxfiles = []
-    for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
-        try:
-            del dirs[dirs.index('.doctrees')]
-        except ValueError:
-            pass
-        #strip off the initial 'sphinx/build/' for tgt path creation
-        subdir = dirpath[13:]
-        sphinxfiles.append(
-            (os.path.join('share', 'doc', 'certain', 'html', subdir),
-             [os.path.join(dirpath, name) for name in files]))
+#Generate a list of sphinx doc paths to install
+sphinxfiles = []
+for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
+    try:
+        del dirs[dirs.index('.doctrees')]
+    except ValueError:
+        pass
+    #strip off the initial 'sphinx/build/' for tgt path creation
+    subdir = dirpath[13:]
+    sphinxfiles.append(
+        (os.path.join('share', 'doc', 'certain', 'html', subdir),
+         [os.path.join(dirpath, name) for name in files]))
 
-    #Add data files to array
-    data_files.extend(sphinxfiles)
-    data_files.append(
-        (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
-    data_files.append(
-        (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
-    data_files.append(
-        (os.path.join('share', 'man', 'man8'), ['man/certain.8']))
-    data_files.append(
-        (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']))
+#Add data files to array
+data_files.extend(sphinxfiles)
+data_files.append(
+    (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
+data_files.append(
+    (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
+data_files.append(
+    (os.path.join('share', 'man', 'man8'), ['man/certain.8']))
+data_files.append(
+    (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']))
 
 setup(
     name = 'certain',
