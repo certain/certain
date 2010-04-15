@@ -29,7 +29,7 @@
         <item>
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
-           <widget class="QListView" name="listView"/>
+           <widget class="QListView" name="csrList"/>
           </item>
          </layout>
         </item>
@@ -41,7 +41,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QPlainTextEdit" name="plainTextEdit"/>
+         <widget class="QPlainTextEdit" name="config"/>
         </item>
        </layout>
       </widget>
@@ -73,7 +73,7 @@
      <x>0</x>
      <y>0</y>
      <width>463</width>
-     <height>21</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCertain">
