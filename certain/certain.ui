@@ -27,11 +27,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="QListView" name="csrList"/>
-          </item>
-         </layout>
+         <widget class="QTableWidget" name="csrList"/>
         </item>
        </layout>
       </widget>

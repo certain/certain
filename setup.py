@@ -7,8 +7,7 @@ import os
 
 
 if sys.argv[1] == 'install':
-
-    #Build Rest config options from defaults
+    #Build reSt config options from defaults
     with open('sphinx/config.rst', 'w') as rst:
         with open('certain/certain.cfg.defaults') as cfg:
             for line in cfg.readlines():
