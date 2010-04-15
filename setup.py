@@ -16,7 +16,7 @@ if sys.argv[1] == 'install':
                 if line.startswith('['):
                     rst.write(line + "------------------------------\n\n")
                 elif line.startswith('# note: '):
-                    rst.write('.. note:: ' + line[8:])
+                    rst.write('\t.. note:: ' + line[8:])
                 elif line.startswith('#'):
                     comment += ['\n\t\t' + line[1:]]
                 else:
