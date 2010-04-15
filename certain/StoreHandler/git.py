@@ -109,6 +109,21 @@ class store(StoreBase):
         blob = dulwich.objects.Blob.from_string(certobj.as_pem())
         tree.add(0100644, certobj.get_subject().CN + ".crt", blob.id)
 
+        self.repo.object_store.add_object(blob)
+        self._do_commit(tree, u'Add certificate for "%s"\n' % (
+            certobj.get_subject().CN, ))
+        super(store, self).write(certobj)
+
+    @synchronised(lock)
+    def remove(self, CN):
+        tree = self.repo.tree(self.repo.get_object(self.repo.head()).tree)
+        # The certificate is in the root tree, and is called "<CN>.crt"
+        del tree[CN + ".crt"]
+        self._do_commit(tree, u'Delete certificate for "%s"\n' % (
+            certobj.get_subject().CN, ))
+        super(store, self).remove(certobj)
+
+    def _do_commit(self, tree, message):
         commit = dulwich.objects.Commit()
         commit.tree = tree.id
         commit.author = '<' + config.get('ca', 'Email') + '>'
@@ -117,16 +132,13 @@ class store(StoreBase):
         commit.author_timezone = dulwich.objects.parse_timezone("0000")
         commit.commit_timezone = commit.author_timezone
         commit.encoding = "UTF-8"
-        commit.message = u'Add certificate for "%s"\n' % (
-            certobj.get_subject().CN, )
+        commit.message = message
         commit.parents = [self.repo.refs['refs/heads/master']]
 
-        self.repo.object_store.add_object(blob)
         self.repo.object_store.add_object(tree)
         self.repo.object_store.add_object(commit)
         self.repo.refs['refs/heads/master'] = commit.id
         self._unpack(tree, self.repo.path)
-        super(store, self).write(certobj)
 
     def _unpack(self, tree, path='.'):
         for name, mode, sha1 in tree.iteritems():

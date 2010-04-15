@@ -30,6 +30,11 @@ class StoreBase(object):
         """Checkpoint any pending actions on the store."""
         return
 
+    @abc.abstractmethod
+    def remove(self, CN):
+        """Remove a certificate from the store by Common Name."""
+        return
+
     def __enter__(self):
         self.setup()
         return self
