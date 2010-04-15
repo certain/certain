@@ -24,16 +24,16 @@ if sys.argv[1] == 'install':
                     comment = []
 
     #Build sphinx documentation
-    os.system('sphinx-build -b html sphinx ' + os.path.join('sphinx', 'build'))
+    os.system('sphinx-build -b html sphinx ' + os.path.join('setup', 'sphinx'))
 
     try:
-        os.mkdir('etc/certain')
+        os.mkdir('setup')
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
 
     #Copy certain.cfg.defaults to certain.cfg
-    with open('etc/certain/certain.cfg', 'w') as c:
+    with open('setup/certain.cfg', 'w') as c:
         c.write("# Certain's default configuration is given below.\n"
                 "# Uncomment lines as appropriate to change.\n\n")
         with open('certain/certain.cfg.defaults') as f:
@@ -47,7 +47,7 @@ data_files = []
 
 #Generate a list of sphinx doc paths to install
 sphinxfiles = []
-for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
+for (dirpath, dirs, files) in os.walk(os.path.join('setup', 'sphinx')):
     try:
         del dirs[dirs.index('.doctrees')]
     except ValueError:
@@ -63,7 +63,7 @@ data_files.extend(sphinxfiles)
 data_files.append(
     (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
 data_files.append(
-    (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
+    (os.path.join('/etc', 'certain'), ['setup/certain.cfg']))
 
 setup(
     name = 'certain',
