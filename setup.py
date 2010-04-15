@@ -28,12 +28,12 @@ if sys.argv[1] == 'install':
     #Generate a list of sphinx doc paths to install
     sphinxfiles = []
     for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
+        del dirs[dirs.index('.doctrees')]
         #strip off the initial 'sphinx/build/' for tgt path creation
         subdir = dirpath[13:]
-        for name in files:
-            sphinxfiles.append(
-                (os.path.join('share', 'doc', 'certain', 'html', subdir),
-                 [os.path.join(dirpath, name)]))
+        sphinxfiles.append(
+            (os.path.join('share', 'doc', 'certain', 'html', subdir),
+             [os.path.join(dirpath, name) for name in files]))
 
     #Add data files to array
     data_files.extend(sphinxfiles)
