@@ -1,110 +1,180 @@
 [global]
+LogLevel = INFO
 #LogLevel can be one of DEBUG, INFO, WARN, ERR, CRITICAL
-LogLevel = CRITICAL
-#File to write logs to
+
 LogFile = /var/log/certain.log
-#Size of logfile before rotation (bytes)
+#File to write logs to
+
 LogSize = 2000000
-#Number of old rotated logfiles to keep
+#Size to grow logfile to before rotation (bytes)
+
 LogRotate = 5
-#Root path for all certain sub-directories
+#Number of old rotated logfiles to keep
+
 RootPath = /etc/certain
-#Path to store CA certificate (master)
+#Root path for all Certain sub-directories
+
 CAPath = %(RootPath)s/CA
-#Path to store CA private key (master)
+#Path to store CA certificate (master)
+
 CAPrivatePath = %(RootPath)s/CA/private
-#Path to store 'own' certificates
+#Path to store CA private key (master)
+
 CertPath = %(RootPath)s/certs
-#Path to store 'own' private keys
+#Path to store 'own' certificates
+
 PrivatePath = %(RootPath)s/private
-#Path to store received CSR files awaiting signing
+#Path to store 'own' private keys
+
 CSRCache = %(RootPath)s/CSRCache
-#Path of certificate store
+#Path to store received CSR files awaiting signing
+
 StoreDir = %(RootPath)s/store
-#Is this computer the master? (boolean)
+#Path of certificate store
+
 IsMaster = 1
-#Default address & port for Master
+#Is this computer the master? (boolean)
+
 MasterAddress = certain
+#Default address for Master
+
 MasterPort = 35182
+#Default port for Master
+
 MasterSeqPort = 35183
-#Algorithm to use for signing certs
-#Can be one of sha1, md5, sha224, sha256, ripemd160
+#Default port for master UUID sequence generator
+
 Algorithm = sha256
+#Algorithm to use for signing certs.
+#Can be one of sha1, md5, sha224, sha256, ripemd160
 
 
 [master]
-#Should CSR's be automatically signed? (boolean)
+
 AutoSign = 0
-#Require the CSR CommonName to match the requesting host? (boolean)
+#Should the master automatically sign certificates without any verification? (boolean)
+
 HostVerify = 0
-#Types of notifictions to send when CA is due to expire
-#A space-separated list of: log, email
-ExpiryNotifiers = log email
-#How often to send Notification messages for expired ca (seconds)
+#Should the Certificate CN field match the hostname that sent the CSR? (boolean)
+
+ExpiryNotifiers = log
+#Types of notifications to send when CA is due to expire.
+#A space-separated list of: log email
+
 NotifyFrequency = 86400
+#How frequently to send Notification messages for expired CA certificates (seconds)
 
 
 [store]
-#StoreType can be a space-separated list of one or more of:
-# none, svn, git, web, webserver, webdav, multiplex
-StoreType = svn
+
+StoreType = web
+#Store plugin to use for storing signed certificates.
+#One of: none, svn, git, web, webdav, multiplex
+
 StoreUrl = https://certain/certs
-#How often to poll the store for new certificates
+#URL corresponding to the location of the chosen Store.
+
 PollTimer = 3600
-# StoreServer is the server module which will be started by the 'storeserver'
-# command.
-# Can be: webserver, gitdaemon
+#How often to poll the store for new certificates (0 disables polling)
+
 StoreServer = webserver
+#Which storeserver plugin to run (provides that store service if you don't wish to use a 3rd party service).
 
 
 [ca]
-#Name of CA certificate
+
 CACert = certain.crt
-#Name of CA key file
+Name of CA certificate file
+
 CAKey = certain.key
-#Name of CA CSR file (for optional manual signing of CA)
+#Name of CA key file
+
 CACSR = certain.csr
+#Name of CA CSR file (provided if 3rd-party signing of the CA is needed).
+
 Bits = 2048
+#Keylength of the CA
+
 Email = CA@Certain
+#Email address field of CA
+
 CN = Certain CA
+#Common Name field of CA
+
 OU = Certain Unit
+#Organisational Unit field of CA
+
 O = Certain Org
+#Organisation field of CA
+
 L = Certain City
+#Location field of CA
+
 ST = Certain State
-C = UK
-# 60 * 60 * 24  * 365 * 10 = 10 years
+#State field of CA
+
+C =  = UK
+#Country field of CA
+
 CALifetime = 315360000
-# 60 * 60 * 24 * 7 = 7 days
+#Lifetime of CA certificate (seconds)
+
 ExpiryDeadline = 608400
+#Time before CA expiry to begin sending expiry notifications (seconds)
 
 
 [cert]
-Bits = 2048
-#CN defaults to fqdn
-Email = certain@Certain
+
+CN = client.example.com
+#Common Name field of client certificate (defaults to client FQDN)
+
+Email = admin@client.example.com
+#Email address field of client certificate
+
 OU = Certain Unit
+#Organisational Unit field of client certificate
+
 O = Certain Org
+#Organisation field of client certificate
+
 L = Certain City
+#Location field of client certificate
+
 ST = Certain State
+#State field of client certificate
+
 C = UK
-# 60 * 60 * 24  * 365 = 1 year
-CertLifetime = 31536000
-# 60 * 60 * 24 * 7 = 7 days
+#Country field of client certificate
+
+CertLifetime = 315360000
+#Lifetime of client certificate (seconds)
+
 ExpiryDeadline = 608400
+#Time before client certificate expiry to send new CSR (seconds)
 
 
 [email]
+
 SMTPServer = smtp.example.com
+#SMTP Server to send Expiry Notification emails with
+
 FromAddress = certain@example.com
+#From Address for Expiry Notification emails
+
+#CA expiry notification emails will be sent to the email address given in the CA Email field.
 
 
 [webserver]
-#Directory to write certs to (to be served by a webserver)
+
 WebDir = /var/www/html/certs
-#Port for webserver to listen on
+#Directory to write certificates to (being served by StoreServer webserver, or 3rd party webserver, e.g Apache)
+
 ServerPort = 32184
+#Port for webserver to listen on (if using StoreServer webserver)
 
 
 [gitdaemon]
-# The master git repository.
+
 WorkDir = /var/lib/certain/store.git
+#The location of the master repository.
+

@@ -7,7 +7,21 @@ import os
 
 
 if sys.argv[1] == 'install':
-    os.system('./make_doc.sh')
+
+    #Build Rest config options from defaults
+    with open('sphinx/config.rst', 'w') as rst:
+        with open('certain/certain.cfg.defaults') as cfg:
+            for line in cfg.readlines():
+                if line.startswith('['):
+                    rst.write(line + "------------------------------\n\n")
+                elif line.startswith('#'):
+                    comment = line[1:]
+                    rst.write("\n\t\t" + comment)
+                else:
+                    rst.write("\t" + line)
+
+    #Build sphinx documentation
+    os.system('sphinx-build -b html sphinx ' + os.path.join('sphinx', 'build'))
 
     try:
         os.mkdir('etc/certain')
@@ -21,14 +35,20 @@ if sys.argv[1] == 'install':
                 "# Uncomment lines as appropriate to change.\n\n")
         with open('certain/certain.cfg.defaults') as f:
             for line in f:
-                c.write("#" + line)
+                if line.isspace():
+                    c.write(line)
+                else:
+                    c.write("#" + line)
 
     data_files = []
 
     #Generate a list of sphinx doc paths to install
     sphinxfiles = []
     for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
-        del dirs[dirs.index('.doctrees')]
+        try:
+            del dirs[dirs.index('.doctrees')]
+        except ValueError:
+            pass
         #strip off the initial 'sphinx/build/' for tgt path creation
         subdir = dirpath[13:]
         sphinxfiles.append(
