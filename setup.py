@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 import sys
 from setuptools import setup, find_packages
@@ -64,10 +64,6 @@ data_files.append(
     (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
 data_files.append(
     (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
-data_files.append(
-    (os.path.join('share', 'man', 'man8'), ['man/certain.8']))
-data_files.append(
-    (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']))
 
 setup(
     name = 'certain',
