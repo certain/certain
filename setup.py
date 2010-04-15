@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 import sys
 from setuptools import setup, find_packages
@@ -40,31 +40,27 @@ if sys.argv[1] == 'install':
                 else:
                     c.write("#" + line)
 
-    data_files = []
+data_files = []
 
-    #Generate a list of sphinx doc paths to install
-    sphinxfiles = []
-    for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
-        try:
-            del dirs[dirs.index('.doctrees')]
-        except ValueError:
-            pass
-        #strip off the initial 'sphinx/build/' for tgt path creation
-        subdir = dirpath[13:]
-        sphinxfiles.append(
-            (os.path.join('share', 'doc', 'certain', 'html', subdir),
-             [os.path.join(dirpath, name) for name in files]))
+#Generate a list of sphinx doc paths to install
+sphinxfiles = []
+for (dirpath, dirs, files) in os.walk(os.path.join('sphinx', 'build')):
+    try:
+        del dirs[dirs.index('.doctrees')]
+    except ValueError:
+        pass
+    #strip off the initial 'sphinx/build/' for tgt path creation
+    subdir = dirpath[13:]
+    sphinxfiles.append(
+        (os.path.join('share', 'doc', 'certain', 'html', subdir),
+         [os.path.join(dirpath, name) for name in files]))
 
-    #Add data files to array
-    data_files.extend(sphinxfiles)
-    data_files.append(
-        (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
-    data_files.append(
-        (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
-    data_files.append(
-        (os.path.join('share', 'man', 'man8'), ['man/certain.8']))
-    data_files.append(
-        (os.path.join('share', 'man', 'man5'), ['man/certain.cfg.5']))
+#Add data files to array
+data_files.extend(sphinxfiles)
+data_files.append(
+    (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
+data_files.append(
+    (os.path.join('/etc', 'certain'), ['etc/certain/certain.cfg']))
 
 setup(
     name = 'certain',

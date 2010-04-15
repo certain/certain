@@ -1,9 +1,7 @@
 #!/usr/bin/make -f
 
-PYTHON=`which python`
 DESTDIR=/
 PROJECT=certain
-BUILDDIR=$(CURDIR)/build/$(PROJECT)
 
 all:
 	@echo "make source - Create source package"
@@ -13,23 +11,20 @@ all:
 	@echo "make clean - Get rid of scratch and byte files"
 
 source:
-	$(PYTHON) setup.py sdist $(COMPILE)
-
+	$(CURDIR)/setup.py sdist
 
 install:
-	$(PYTHON) setup.py install --prefix=/usr --root $(DESTDIR) $(COMPILE) 
+	$(CURDIR)/setup.py install --prefix=/usr --root $(DESTDIR)
 
 buildrpm:
-	$(PYTHON) setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
+	$(CURDIR)/setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
 
 builddeb:
-	$(PYTHON) setup.py sdist $(COMPILE) --dist-dir=../
+	$(CURDIR)/setup.py sdist $(COMPILE) --dist-dir=../
 	rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
 	dpkg-buildpackage -i -I -rfakeroot
 
 clean:
-	$(PYTHON) setup.py clean
+	$(CURDIR)/setup.py clean --root $(DESTDIR)
 	$(MAKE) -f $(CURDIR)/debian/rules clean
-	rm -rf build/ MANIFEST
-	find . -name '*.pyc' -delete
-
+	find . -name '*.py[oc]' -delete

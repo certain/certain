@@ -84,7 +84,7 @@ StoreServer = webserver
 [ca]
 
 CACert = certain.crt
-Name of CA certificate file
+#Name of CA certificate file
 
 CAKey = certain.key
 #Name of CA key file
