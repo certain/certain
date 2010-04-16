@@ -910,7 +910,7 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
         logformat = logging.Formatter('%(levelname)s %(message)s')
 
     for handler in log.handlers:
-        if isinstance(handler, logging.RotatingFileHandler):
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
             log.removeHandler(handler)
             continue
         handler.setLevel(loglevel)

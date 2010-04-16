@@ -7,7 +7,6 @@ import os
 
 
 if sys.argv[1] == 'install':
-
     #Build reSt config options from defaults
     comment = []
     with open('sphinx/config.rst', 'w') as rst:

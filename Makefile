@@ -20,13 +20,22 @@ buildrpm:
 	$(CURDIR)/setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
 
 builddeb:
+<<<<<<< HEAD
 	mkdir -p setup/deb/
 	$(CURDIR)/setup.py sdist $(COMPILE) --dist-dir=setup/deb/
+=======
+	$(CURDIR)/setup.py sdist $(COMPILE) --dist-dir=../
+>>>>>>> 5a332f55cf495bd3d303082aed6726ed074d9595
 	rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
 	dpkg-buildpackage -tc -i -I -rfakeroot
 
 clean:
+<<<<<<< HEAD
 	$(CURDIR)/setup.py clean
 	$(MAKE) -f $(CURDIR)/debian/rules clean
 	rm -rf setup/
+=======
+	$(CURDIR)/setup.py clean --root $(DESTDIR)
+	$(MAKE) -f $(CURDIR)/debian/rules clean
+>>>>>>> 5a332f55cf495bd3d303082aed6726ed074d9595
 	find . -name '*.py[oc]' -delete
