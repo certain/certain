@@ -22,25 +22,16 @@ class MainWindow(QtGui.QMainWindow):
         self._reset()
 
     def _reset(self):
-        rowcount = 0
-        colminwidth = 5
-        self.ui.csrList.setColumnWidth(0, colminwidth)
-        entries = ['a', 'b', 'long-named-cert']
-
-        self.ui.csrList.setRowCount(len(entries))
-        for entry in entries:
+        for i, csr in enumerate(pending_csrs()):
+            self.ui.csrList.setRowCount(i + 1)
             actionlist = QtGui.QComboBox()
             actionlist.insertItems(0, ['', 'Sign', 'Delete'])
             if len(entry) * 10 > colminwidth:
                 colminwidth = len(entry) * 10
                 self.ui.csrList.setColumnWidth(0, colminwidth)
-            self.ui.csrList.setCellWidget(
-                entries.index(entry), 0, QtGui.QLabel(entry))
-            self.ui.csrList.setCellWidget(
-                entries.index(entry), 1, actionlist)
-        for i, csr in enumerate(pending_csrs()):
-            self.ui.csrList.setRowCount(i + 1)
-            self.ui.csrList.setItem(i, 1, csr.CN)
+            self.ui.csrList.setCellWidget(i, 0,
+                QtGui.QLabel(csr.iget_subject().CN))
+            self.ui.csrList.setCellWidget(i, 1, actionlist)
         #with open(DEFAULT_CONFIG_FILE) as f:
         #    self.ui.config.insertPlainText(f.read())
 
