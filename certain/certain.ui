@@ -22,142 +22,106 @@
        <bool>false</bool>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
         <string>CSRs</string>
        </attribute>
-       <widget class="QTableWidget" name="csrList">
-        <property name="geometry">
-         <rect>
-          <x>9</x>
-          <y>9</y>
-          <width>421</width>
-          <height>251</height>
-         </rect>
-        </property>
-        <property name="autoFillBackground">
-         <bool>false</bool>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="csrReset">
-        <property name="geometry">
-         <rect>
-          <x>60</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Reset</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="csrApply">
-        <property name="geometry">
-         <rect>
-          <x>280</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Apply</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QTableWidget" name="csrList">
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QPushButton" name="csrApply">
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="csrReset">
+            <property name="text">
+             <string>Reset</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
         <string>Configure</string>
        </attribute>
-       <widget class="QPlainTextEdit" name="config">
-        <property name="geometry">
-         <rect>
-          <x>9</x>
-          <y>9</y>
-          <width>421</width>
-          <height>251</height>
-         </rect>
-        </property>
-        <property name="autoFillBackground">
-         <bool>false</bool>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="confReset">
-        <property name="geometry">
-         <rect>
-          <x>60</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Reset</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="confApply">
-        <property name="geometry">
-         <rect>
-          <x>280</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Apply</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QPlainTextEdit" name="config">
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QPushButton" name="confReset">
+            <property name="text">
+             <string>Reset</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="confApply">
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
         <string>Certificates</string>
        </attribute>
-       <widget class="QTableWidget" name="certs">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>10</y>
-          <width>421</width>
-          <height>250</height>
-         </rect>
-        </property>
-        <property name="autoFillBackground">
-         <bool>false</bool>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="certsApply">
-        <property name="geometry">
-         <rect>
-          <x>280</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Apply</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="certsReset">
-        <property name="geometry">
-         <rect>
-          <x>60</x>
-          <y>270</y>
-          <width>98</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Reset</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QTableWidget" name="certs">
+          <property name="autoFillBackground">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QPushButton" name="certsReset">
+            <property name="text">
+             <string>Reset</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="certsApply">
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </widget>
      </widget>
     </item>
@@ -169,13 +133,14 @@
      <x>0</x>
      <y>0</y>
      <width>463</width>
-     <height>25</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCertain">
     <property name="title">
      <string>&amp;File</string>
     </property>
+    <addaction name="action_Open"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -196,6 +161,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>&amp;About</string>
+   </property>
+  </action>
+  <action name="action_Open">
+   <property name="text">
+    <string>&amp;Open...</string>
    </property>
   </action>
  </widget>

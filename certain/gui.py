@@ -6,14 +6,14 @@ from . import DEFAULT_CONFIG_FILE
 import sys
 import os
 
+
 class MainWindow(QtGui.QMainWindow):
 
     class ActionList(QtGui.QComboBox):
-        def __init__(self, *args, **kwargs):
-            #super(MainWindow.ActionList, self).__init__(*args, **kwargs)
+
+        def __init__(self, obj):
             QtGui.QComboBox.__init__(self)
-            if len(args) > 0:
-                self.obj = args[0]
+            self.obj = obj
 
         def act(self):
             if self.currentText() == 'Sign':
@@ -21,18 +21,15 @@ class MainWindow(QtGui.QMainWindow):
             elif self.currentText() == 'Delete':
                 self.obj.remove()
 
-
     class StoreList(QtGui.QCheckBox):
-        def __init__(self, *args, **kwargs):
-            #super(MainWindow.ActionList, self).__init__(*args, **kwargs)
+
+        def __init__(self, filename):
             QtGui.QCheckBox.__init__(self)
-            if len(args) > 0:
-                self.filename = args[0]
+            self.filename = filename
 
         def act(self):
             if self.checkState():
                 print "Deleting " + self.filename
-
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -52,8 +49,23 @@ class MainWindow(QtGui.QMainWindow):
         self.connect(self.ui.certsReset, QtCore.SIGNAL("clicked()"),
             self._resetCerts)
 
+        self.connect(self.ui.action_Open, QtCore.SIGNAL("activated()"),
+            self._loadDialog)
+
+        self.configFile = DEFAULT_CONFIG_FILE
+        try:
+            certain.parse_config()
+        except ConfigParser.Error:
+            QtGui.QMessageBox.warning("Missing config file",
+                "Could not load configuration file, "
+                "please load one from the menu.")
+        else:
+            self._reset()
+
+    def _reset(self):
         self._resetCerts()
         self._resetCSR()
+        self._resetConfig()
 
     def _resetCSR(self):
         for i, csr in enumerate(pending_csrs()):
@@ -68,8 +80,6 @@ class MainWindow(QtGui.QMainWindow):
             self.ui.csrList.setCellWidget(i, 1, actionlist)
             self.ui.csrList.resizeColumnToContents(0)
             self.ui.csrList.resizeColumnToContents(1)
-        #with open(DEFAULT_CONFIG_FILE) as f:
-            #self.ui.config.insertPlainText(f.read())
 
     def _resetCerts(self):
         rowcount = 0
@@ -84,8 +94,25 @@ class MainWindow(QtGui.QMainWindow):
             self.ui.certs.resizeColumnToContents(0)
             self.ui.certs.resizeColumnToContents(1)
             rowcount = rowcount + 1
-            
-            
+
+    def _resetConfig(self):
+        with open(self.configFile) as f:
+            self.ui.config.insertPlainText(f.read())
+
+    def _loadDialog(self):
+        filename = QtGui.QFileDialog.getOpenFileName(self, "Open File",
+            "", "Configuration files (*.cfg)")
+        if filename:
+            self.configFile = filename
+            try:
+                certain.parse_config(self.configFile)
+            except ConfigParser.Error:
+                QtGui.QMessageBox.warning("Missing config file",
+                    "Could not load configuration file." +
+                    self.configFile)
+            else:
+                self._reset()
+
 
 def main():
     app = QtGui.QApplication(sys.argv)
