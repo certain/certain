@@ -14,10 +14,13 @@ class MainWindow(QtGui.QMainWindow):
         self.ui = CertainForm.Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.csrList.setColumnCount(2)
-        self.ui.csrList.setColumnWidth(0, 150)
         self.ui.csrList.setHorizontalHeaderLabels(QtCore.QStringList(
             ['Common Name', 'Action']))
 
+        self.connect(self.ui.resetButton, SIGNAL("clicked()"), self, _reset)
+        self._reset()
+
+    def _reset(self):
         rowcount = 0
         colminwidth = 5
         self.ui.csrList.setColumnWidth(0, colminwidth)
@@ -34,10 +37,6 @@ class MainWindow(QtGui.QMainWindow):
                 entries.index(entry), 0, QtGui.QLabel(entry))
             self.ui.csrList.setCellWidget(
                 entries.index(entry), 1, actionlist)
-
-        self._reset()
-
-    def _reset(self):
         for i, csr in enumerate(pending_csrs()):
             self.ui.csrList.setRowCount(i + 1)
             self.ui.csrList.setItem(i, 1, csr.CN)
