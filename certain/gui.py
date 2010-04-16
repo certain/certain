@@ -3,6 +3,8 @@ from PyQt4 import QtGui
 from . import pending_csrs
 from . import CertainForm
 from . import DEFAULT_CONFIG_FILE
+from . import parse_config
+import ConfigParser
 import sys
 import os
 
@@ -54,9 +56,9 @@ class MainWindow(QtGui.QMainWindow):
 
         self.configFile = DEFAULT_CONFIG_FILE
         try:
-            certain.parse_config()
+            parse_config()
         except ConfigParser.Error:
-            QtGui.QMessageBox.warning("Missing config file",
+            QtGui.QMessageBox.warning(self, "Missing config file",
                 "Could not load configuration file, "
                 "please load one from the menu.")
         else:
@@ -101,14 +103,14 @@ class MainWindow(QtGui.QMainWindow):
 
     def _loadDialog(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, "Open File",
-            "", "Configuration files (*.cfg)")
+            "", "Configuration files (*.cfg);;All files (*.*)")
         if filename:
-            self.configFile = filename
+            self.configFile = str(filename)
             try:
-                certain.parse_config(self.configFile)
+                parse_config(self.configFile)
             except ConfigParser.Error:
-                QtGui.QMessageBox.warning("Missing config file",
-                    "Could not load configuration file." +
+                QtGui.QMessageBox.warning(self, "Missing config file",
+                    "Could not load configuration file: " +
                     self.configFile)
             else:
                 self._reset()
