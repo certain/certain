@@ -17,7 +17,8 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.csrList.setHorizontalHeaderLabels(QtCore.QStringList(
             ['Common Name', 'Action']))
 
-        self.connect(self.ui.resetButton, SIGNAL("clicked()"), self, _reset)
+        self.connect(self.ui.resetButton, QtCore.SIGNAL("clicked()"),
+            self._reset)
         self._reset()
 
     def _reset(self):
