@@ -12,15 +12,12 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Certain</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_4">
     <item>
      <widget class="QTabWidget" name="tabWidget">
-      <property name="autoFillBackground">
-       <bool>false</bool>
-      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -42,16 +39,16 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QPushButton" name="csrApply">
+           <widget class="QPushButton" name="csrReset">
             <property name="text">
-             <string>Apply</string>
+             <string>Reset</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="csrReset">
+           <widget class="QPushButton" name="csrApply">
             <property name="text">
-             <string>Reset</string>
+             <string>Apply</string>
             </property>
            </widget>
           </item>
@@ -133,7 +130,7 @@
      <x>0</x>
      <y>0</y>
      <width>463</width>
-     <height>24</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuCertain">

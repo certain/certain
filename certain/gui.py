@@ -58,9 +58,16 @@ class MainWindow(QtGui.QMainWindow):
         try:
             parse_config()
         except ConfigParser.Error:
-            QtGui.QMessageBox.warning(self, "Missing config file",
+            QtGui.QMessageBox.warning(self,
+                self.windowTitle() + " - Missing config file",
                 "Could not load configuration file, "
                 "please load one from the menu.")
+        except Exception, e:
+            QtGui.QMessageBox.critical(self,
+                self.windowTitle() + " - Error loading config",
+                "There was an error while loading the config file. "
+                "This usually indicates incorrect permissions or missing "
+                "directories. Try to fix this error:\n\n" + str(e))
         else:
             self._reset()
 
@@ -109,9 +116,16 @@ class MainWindow(QtGui.QMainWindow):
             try:
                 parse_config(self.configFile)
             except ConfigParser.Error:
-                QtGui.QMessageBox.warning(self, "Missing config file",
+                QtGui.QMessageBox.warning(self,
+                    self.windowTitle() + " - Missing config file",
                     "Could not load configuration file: " +
                     self.configFile)
+            except Exception, e:
+                QtGui.QMessageBox.critical(self,
+                    self.windowTitle() + " - Error loading config",
+                    "There was an error while loading the config file. "
+                    "This usually indicates incorrect permissions or missing "
+                    "directories. Try to fix this error:\n\n" + str(e))
             else:
                 self._reset()
 
