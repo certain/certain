@@ -28,9 +28,6 @@
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
          <widget class="QTableWidget" name="csrList">
-          <property name="autoFillBackground">
-           <bool>false</bool>
-          </property>
           <property name="wordWrap">
            <bool>true</bool>
           </property>
@@ -56,49 +53,13 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_2">
-       <attribute name="title">
-        <string>Configure</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QPlainTextEdit" name="config">
-          <property name="autoFillBackground">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <widget class="QPushButton" name="confReset">
-            <property name="text">
-             <string>Reset</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="confApply">
-            <property name="text">
-             <string>Apply</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
         <string>Certificates</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
-         <widget class="QTableWidget" name="certs">
-          <property name="autoFillBackground">
-           <bool>false</bool>
-          </property>
-         </widget>
+         <widget class="QTableWidget" name="certs"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -111,6 +72,34 @@
           </item>
           <item>
            <widget class="QPushButton" name="certsApply">
+            <property name="text">
+             <string>Apply</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>Configure</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QPlainTextEdit" name="config"/>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QPushButton" name="confReset">
+            <property name="text">
+             <string>Reset</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="confApply">
             <property name="text">
              <string>Apply</string>
             </property>
@@ -138,7 +127,10 @@
      <string>&amp;File</string>
     </property>
     <addaction name="action_Open"/>
-    <addaction name="actionExit"/>
+    <addaction name="action_Make_certs"/>
+    <addaction name="action_Fetch"/>
+    <addaction name="separator"/>
+    <addaction name="action_Quit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -150,7 +142,7 @@
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionExit">
+  <action name="action_Quit">
    <property name="text">
     <string>&amp;Quit</string>
    </property>
@@ -165,11 +157,21 @@
     <string>&amp;Open...</string>
    </property>
   </action>
+  <action name="action_Make_certs">
+   <property name="text">
+    <string>&amp;Make certificates</string>
+   </property>
+  </action>
+  <action name="action_Fetch">
+   <property name="text">
+    <string>&amp;Fetch</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections>
   <connection>
-   <sender>actionExit</sender>
+   <sender>action_Quit</sender>
    <signal>activated()</signal>
    <receiver>MainWindow</receiver>
    <slot>close()</slot>

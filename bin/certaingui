@@ -1,0 +1,11 @@
+#!/usr/bin/python
+
+import certain.gui
+
+
+def main():
+    certain.gui.main()
+
+
+if __name__ == '__main__':
+    main()

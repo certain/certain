@@ -4,6 +4,7 @@ from . import pending_csrs
 from . import CertainForm
 from . import DEFAULT_CONFIG_FILE
 from . import parse_config
+from . import config
 import ConfigParser
 import sys
 import os
@@ -54,14 +55,21 @@ class MainWindow(QtGui.QMainWindow):
         self.connect(self.ui.action_Open, QtCore.SIGNAL("activated()"),
             self._loadDialog)
 
+        self.connect(self.ui.action_Fetch, QtCore.SIGNAL("activated()"),
+            self._fetch)
+
+        self.connect(self.ui.action_Make_certs, QtCore.SIGNAL("activated()"),
+            self._makecerts)
+
         self.configFile = DEFAULT_CONFIG_FILE
         try:
-            parse_config()
-        except ConfigParser.Error:
+            global config
+            config = parse_config()
+        except ConfigParser.Error, e:
             QtGui.QMessageBox.warning(self,
                 self.windowTitle() + " - Missing config file",
-                "Could not load configuration file, "
-                "please load one from the menu.")
+                "Could not load default configuration file, "
+                "please load one from the menu:\n\n" + str(e))
         except Exception, e:
             QtGui.QMessageBox.critical(self,
                 self.windowTitle() + " - Error loading config",
@@ -92,7 +100,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def _resetCerts(self):
         rowcount = 0
-        for file in os.listdir("/data/etc/store/"):
+        for file in os.listdir(config.get('global', 'StoreDir')):
             self.ui.certs.setRowCount(rowcount + 1)
             self.ui.certs.setCellWidget(rowcount, 0,
                 QtGui.QLabel(file))
@@ -114,12 +122,13 @@ class MainWindow(QtGui.QMainWindow):
         if filename:
             self.configFile = str(filename)
             try:
-                parse_config(self.configFile)
-            except ConfigParser.Error:
+                global config
+                config = parse_config(self.configFile)
+            except ConfigParser.Error, e:
                 QtGui.QMessageBox.warning(self,
                     self.windowTitle() + " - Missing config file",
                     "Could not load configuration file: " +
-                    self.configFile)
+                    self.configFile + "\n\n" + str(e))
             except Exception, e:
                 QtGui.QMessageBox.critical(self,
                     self.windowTitle() + " - Error loading config",
@@ -129,6 +138,11 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 self._reset()
 
+    def _fetch(self):
+        pass
+
+    def _makecerts(self):
+        pass
 
 def main():
     app = QtGui.QApplication(sys.argv)

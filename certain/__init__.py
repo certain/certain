@@ -921,6 +921,9 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
         backupCount=config.getint('global', 'LogRotate'))
     log.addHandler(logfile)
     log.setLevel(loglevel)
+    # Users of this library may have their own reference to config. Return the
+    # new ConfigParser so that they may be updated.
+    return config
 
 
 def make_ca():
