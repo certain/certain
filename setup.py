@@ -4,6 +4,7 @@ import sys
 from setuptools import setup, find_packages
 import errno
 import os
+from PyQt4 import uic
 
 
 if sys.argv[1] == 'install':
@@ -42,6 +43,25 @@ if sys.argv[1] == 'install':
                 else:
                     c.write("#" + line)
 
+elif sys.argv[1] == 'build':
+    with open('certain/CertainForm.py', 'w') as f:
+        uic.compileUi('certain/certain.ui', f)
+
+elif sys.argv[1] == 'clean':
+    for dir in ['setup', 'certain.egg-info']:
+        try:
+            for dirpath, dirs, files in os.walk(dir, topdown=False):
+                map(os.unlink, [os.path.join(dirpath, name) for name in files])
+                map(os.rmdir, [os.path.join(dirpath, name) for name in dirs])
+            os.rmdir(dir)
+        except OSError:
+            pass
+    for file in ['certain/CertainForm.py', 'sphinx/config.rst']:
+        try:
+            os.unlink(file)
+        except OSError:
+            pass
+
 data_files = []
 
 #Generate a list of sphinx doc paths to install
@@ -75,6 +95,6 @@ setup(
     include_package_data = True,
     package_data = {'': ['certain.cfg.defaults']},
     install_requires = ['dulwich', 'M2Crypto', 'git'],
-    scripts = ['bin/certain', 'bin/storeserver'],
+    scripts = ['bin/certain', 'bin/storeserver', 'bin/certaingui'],
     data_files = data_files
     )

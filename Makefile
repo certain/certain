@@ -28,5 +28,4 @@ builddeb:
 clean:
 	$(CURDIR)/setup.py clean
 	$(MAKE) -f $(CURDIR)/debian/rules clean
-	rm -rf setup/
 	find . -name '*.py[oc]' -delete
