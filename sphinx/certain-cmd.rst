@@ -1,9 +1,5 @@
+``certain`` - Command-line Tool
 ===============================
-**certain** - Command-line Tool
-===============================
-
-.. program:: certain
-
 
 
 Synopsis
