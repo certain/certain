@@ -28,12 +28,13 @@ if sys.argv[1] == 'install':
 
     try:
         os.mkdir('setup')
+        os.mkdir('setup/etc')
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
 
     #Copy certain.cfg.defaults to certain.cfg
-    with open('setup/certain.cfg', 'w') as c:
+    with open('setup/etc/certain.cfg', 'w') as c:
         c.write("# Certain's default configuration is given below.\n"
                 "# Uncomment lines as appropriate to change.\n\n")
         with open('certain/certain.cfg.defaults') as f:
@@ -82,7 +83,7 @@ data_files.extend(sphinxfiles)
 data_files.append(
     (os.path.join('/etc', 'init.d'), ['etc/init.d/certain']))
 data_files.append(
-    (os.path.join('/etc', 'certain'), ['setup/certain.cfg']))
+    (os.path.join('/etc', 'certain'), ['setup/etc/certain.cfg']))
 
 setup(
     name = 'certain',
