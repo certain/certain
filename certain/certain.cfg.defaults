@@ -3,7 +3,7 @@
 LogLevel = INFO
 
 #File to write logs to
-LogFile = /var/log/certain.log
+LogFile = /var/log/certain/certain.log
 
 #Size to grow logfile to before rotation (bytes)
 LogSize = 2000000
