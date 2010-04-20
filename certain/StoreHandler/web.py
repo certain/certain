@@ -35,7 +35,8 @@ class store(StoreBase):
         super(store, self).__init__()
         self.storedir = config.get('global', 'StoreDir')
         self.webdir = config.get('webserver', 'WebDir')
-        self.lastcheckfile = os.path.join(self.storedir, "lastcheck.txt")
+        self.datadir = os.path.join(self.storedir, '.web')
+        self.lastcheckfile = os.path.join(self.datadir, "lastcheck.txt")
         self.lastcheck = 0
         self.url = urlparse(config.get('store', 'StoreUrl'))
         if self.url.scheme == "https":
@@ -44,6 +45,12 @@ class store(StoreBase):
             self.web = httpslib.HTTPConnection(self.url.netloc)
 
     def setup(self):
+        for dir in (self.storedir, self.webdir, self.datadir):
+            try:
+                os.mkdir(dir)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
         try:
             with open(self.lastcheckfile) as f:
                 #Readline should ensure no accidental trailing newlines
@@ -53,12 +60,6 @@ class store(StoreBase):
             #If we got an exception, lastcheck may be unset or not a float
             #Set it to 0 (epoch) to force a cert update
             self.lastcheck = 0
-        try:
-            os.mkdir(self.storedir)
-            os.mkdir(self.webdir)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
         super(store, self).setup()
 
     def checkpoint(self):
@@ -75,6 +76,17 @@ class store(StoreBase):
         parser.feed(reply.read())
         files = parser.get_items()
 
+        #Remove local files no longer in central store
+        for localonly in set(
+            os.listdir(self.storedir)) - set(map(urllib2.unquote, files)):
+            if localonly != '.web':
+                try:
+                    log.debug("Removing local cert: %s",
+                              os.path.join(self.storedir, localonly))
+                    os.unlink(os.path.join(self.storedir, localonly))
+                except OSError, e:
+                    pass
+
         for certfile in files:
             self.web.request('GET', self.url.path + certfile)
             resp = self.web.getresponse()
@@ -86,7 +98,7 @@ class store(StoreBase):
                 log.debug("Fetching cert %s to %s",
                           certfile, self.storedir)
                 with tempfile.NamedTemporaryFile(
-                    dir=self.storedir,
+                    dir=self.datadir,
                     delete=False) as f_crt:
                     f_crt.write(resp.read())
                     os.rename(f_crt.name,
@@ -95,7 +107,7 @@ class store(StoreBase):
 
         try:
             with tempfile.NamedTemporaryFile(
-                dir=self.storedir,
+                dir=self.datadir,
                 delete=False) as f:
                 f.write(str(now))
 
