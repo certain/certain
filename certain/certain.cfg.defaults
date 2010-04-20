@@ -78,7 +78,8 @@ StoreUrl = https://certain/certs
 PollTimer = 3600
 
 #Which storeserver plugin to run (provides that store service if you don't wish to use a 3rd party service).
-StoreServer = webserver
+#One of: webserver, git-daemon
+StoreServer = none
 
 
 [ca]
