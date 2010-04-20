@@ -38,7 +38,7 @@ if sys.argv[1] == 'install':
                 "# Uncomment lines as appropriate to change.\n\n")
         with open('certain/certain.cfg.defaults') as f:
             for line in f:
-                if line.isspace():
+                if line.isspace() or line.startswith('['):
                     c.write(line)
                 else:
                     c.write("#" + line)
