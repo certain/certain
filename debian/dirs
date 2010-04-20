@@ -6,3 +6,4 @@ etc/certain/CA
 etc/certain/certs
 etc/certain/store
 etc/certain/CA/private
+var/log/certain
