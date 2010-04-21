@@ -24,7 +24,7 @@ def call_git_describe(abbrev=4):
 
 def read_release_version():
     try:
-        f = open("RELEASE-VERSION", "r")
+        f = open("certain/RELEASE-VERSION", "r")
 
         try:
             version = f.readlines()[0]
@@ -38,7 +38,7 @@ def read_release_version():
 
 
 def write_release_version(version):
-    f = open("RELEASE-VERSION", "w")
+    f = open("certain/RELEASE-VERSION", "w")
     f.write("%s\n" % version)
     f.close()
 
@@ -161,8 +161,8 @@ setup(
     url = 'http://www.example.com/certain',
     packages = find_packages(),
     include_package_data = True,
-    package_data = {'': ['certain.cfg.defaults']},
-    install_requires = ['dulwich', 'M2Crypto', 'git'],
+    package_data = {'': ['certain.cfg.defaults', 'RELEASE-VERSION']},
+    install_requires = ['dulwich', 'M2Crypto'],
     scripts = ['bin/certain', 'bin/storeserver', 'bin/certaingui'],
     data_files = data_files
     )

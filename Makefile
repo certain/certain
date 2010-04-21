@@ -23,9 +23,6 @@ builddeb:
 	mkdir -p setup/deb/
 	git-dch -a --new-version=`git describe` --release
 	git-buildpackage --git-ignore-new
-	#$(CURDIR)/setup.py sdist $(COMPILE) --dist-dir=setup/deb/
-	#rename -f 's/$(PROJECT)-(.*)\.tar\.gz/$(PROJECT)_$$1\.orig\.tar\.gz/' ../*
-	#dpkg-buildpackage -tc -i -I -rfakeroot
 
 clean:
 	$(CURDIR)/setup.py clean
