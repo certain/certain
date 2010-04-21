@@ -12,42 +12,26 @@ from subprocess import Popen, PIPE
 
 def call_git_describe(abbrev=4):
     try:
-        p = Popen(['git', 'describe', '--abbrev=%d' % abbrev],
-                  stdout=PIPE, stderr=PIPE)
-        p.stderr.close()
-        line = p.stdout.readlines()[0]
-        return line.strip()
-
-    except:
+        p = Popen(['git', 'describe', '--abbrev=%d' % abbrev], stdout=PIPE)
+        return p.communicate()[0].split('\n')[0].strip()
+    except Exception:
         return None
 
 
 def read_release_version():
     try:
-        f = open("certain/RELEASE-VERSION", "r")
-
-        try:
-            version = f.readlines()[0]
-            return version.strip()
-
-        finally:
-            f.close()
-
-    except:
+        with open("RELEASE-VERSION") as f:
+            return f.readlines()[0].strip()
+    except Exception:
         return None
 
 
 def write_release_version(version):
-    f = open("certain/RELEASE-VERSION", "w")
-    f.write("%s\n" % version)
-    f.close()
+    with open("RELEASE-VERSION", "w") as f:
+        f.write("%s\n" % version)
 
 
 def get_git_version(abbrev=4):
-    # Read in the version that's currently in RELEASE-VERSION.
-
-    release_version = read_release_version()
-
     # First try to get the current version using `git describe`.
 
     version = call_git_describe(abbrev)
@@ -55,6 +39,7 @@ def get_git_version(abbrev=4):
     # If that doesn't work, fall back on the value that's in
     # RELEASE-VERSION.
 
+    release_version = read_release_version()
     if version is None:
         version = release_version
 
