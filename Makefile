@@ -21,7 +21,7 @@ buildrpm:
 
 builddeb:
 	mkdir -p setup/deb/
-	git-dch -a --new-version=`git describe` --release
+	git-dch --debian-tag='%(version)s' --new-version=`git describe` --release
 	git-buildpackage --git-ignore-new
 
 clean:
