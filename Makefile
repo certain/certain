@@ -16,13 +16,23 @@ source:
 install:
 	$(CURDIR)/setup.py install --prefix=/usr --root $(DESTDIR)
 
-buildrpm:
-	$(CURDIR)/setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
+release:
+ifndef REL
+	@echo "Need to specify a release tag: 'make release REL=x.y.z'"
+	@exit 2
+endif
+	git-dch  --debian-tag='%(version)s' --new-version=$(REL) --release
+	git commit debian/changelog -m "Release: $(REL)"
+	git tag -a $(REL) -m "Tagged for release: $(REL)"
 
 builddeb:
 	mkdir -p setup/deb/
-	git-dch --debian-tag='%(version)s' --new-version=`git describe` --release
-	git-buildpackage --git-ignore-new
+	git-buildpackage --git-postbuild='make clean'
+
+buildrpm:
+	$(CURDIR)/setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
+
+
 
 clean:
 	$(CURDIR)/setup.py clean
