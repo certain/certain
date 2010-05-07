@@ -84,7 +84,7 @@ def main():
                                 csr.csr.get_subject().CN)
                         ).strip().lower()
                 if csr.csr and dosign == 'y':
-                    csr.store(store)
+                    csr.store(store=store)
                 elif dosign == 'd':
                     csr.remove()
 
