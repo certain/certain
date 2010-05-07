@@ -1,3 +1,9 @@
+certain (0.0.3) karmic; urgency=low
+
+  * Packaging bugfixes.
+
+ -- Matthew Richardson <M.Richardson@ed.ac.uk>  Fri, 07 May 2010 12:09:02 +0100
+
 certain (0.0.2) unstable; urgency=low
 
   * First release as 'certain'
