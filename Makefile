@@ -6,6 +6,7 @@ PROJECT=certain
 all:
 	@echo "make source - Create source package"
 	@echo "make install - Install on local system"
+	@echo "make release - Tag a release of the project"
 	@echo "make buildrpm - Generate a rpm package"
 	@echo "make builddeb - Generate a deb package"
 	@echo "make clean - Get rid of scratch and byte files"
