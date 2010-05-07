@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+for f in /etc/certain{,/private,/CA,/CA/private,/CSRCache,/certs,/store,/certain.cfg} /var/log/certain; do
+    if dpkg-statoverride --list $f > /dev/null; then
+        dpkg-statoverride --remove $f
+    fi
+done
+
+if getent passwd certain >/dev/null 2>&1; then
+    userdel certain
+fi
+

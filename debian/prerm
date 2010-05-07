@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -6,14 +6,3 @@ set -e
 if which update-python-modules >/dev/null 2>&1; then
     update-python-modules -c certain.public
 fi
-
-for f in /etc/certain/{,CA,CA/private,CSRCache,certs,store,certain.cfg} /var/log/certain; do
-    if dpkg-statoverride --list $f > /dev/null; then
-        dpkg-statoverride --remove $f
-    fi
-done
-
-if getent passwd certain >/dev/null 2>&1; then
-    userdel certain
-fi
-
