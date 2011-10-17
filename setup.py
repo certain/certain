@@ -37,54 +37,51 @@ class PreBuildCommand(Command):
         pass
 
     def run(self):
-        compile_ui()
-        generate_config()
-        generate_docs()
+        self.compile_ui()
+        self.generate_config()
+        self.generate_docs()
         try:
             os.makedirs('setup/sphinx')
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
 
+    def compile_ui(self):
+        with open('certain/CertainForm.py', 'w') as f:
+            uic.compileUi('certain/certain.ui', f)
 
-def compile_ui():
-    with open('certain/CertainForm.py', 'w') as f:
-        uic.compileUi('certain/certain.ui', f)
+    def generate_config(self):
+        try:
+            os.makedirs('setup/etc/certain')
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        #Copy certain.cfg.defaults to certain.cfg
+        with open('setup/etc/certain/certain.cfg', 'w') as c:
+            c.write("# Certain's default configuration is given below.\n"
+                    "# Uncomment lines as appropriate to change.\n\n")
+            with open('certain/certain.cfg.defaults') as f:
+                for line in f:
+                    if line.isspace() or line.startswith('['):
+                        c.write(line)
+                    else:
+                        c.write("#" + line)
 
-
-def generate_config():
-    try:
-        os.makedirs('setup/etc/certain')
-    except OSError, e:
-        if e.errno != errno.EEXIST:
-            raise
-    #Copy certain.cfg.defaults to certain.cfg
-    with open('setup/etc/certain/certain.cfg', 'w') as c:
-        c.write("# Certain's default configuration is given below.\n"
-                "# Uncomment lines as appropriate to change.\n\n")
-        with open('certain/certain.cfg.defaults') as f:
-            for line in f:
-                if line.isspace() or line.startswith('['):
-                    c.write(line)
-                else:
-                    c.write("#" + line)
-
-
-def generate_docs():
-    #Build reSt config options from defaults
-    comment = []
-    with open('sphinx/config.rst', 'w') as rst:
-        with open('certain/certain.cfg.defaults') as cfg:
-            for line in cfg:
-                if line.startswith('['):
-                    rst.write(line + "------------------------------\n\n")
-                elif line.startswith('# note: '):
-                    rst.write('\t.. note:: ' + line[8:])
-                elif line.startswith('#'):
-                    comment += ['\n\t\t' + line[1:]]
-                else:
-                    rst.write("\t" + line + ''.join(comment))
-                    comment = []
+    def generate_docs(self):
+        #Build reSt config options from defaults
+        comment = []
+        with open('sphinx/config.rst', 'w') as rst:
+            with open('certain/certain.cfg.defaults') as cfg:
+                for line in cfg:
+                    if line.startswith('['):
+                        rst.write(line + "------------------------------\n\n")
+                    elif line.startswith('# note: '):
+                        rst.write('\t.. note:: ' + line[8:])
+                    elif line.startswith('#'):
+                        comment += ['\n\t\t' + line[1:]]
+                    else:
+                        rst.write("\t" + line + ''.join(comment))
+                        comment = []
 
 
 def call_git_describe(abbrev=4):
