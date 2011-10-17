@@ -11,11 +11,14 @@ from PyQt4 import uic
 from subprocess import Popen, PIPE
 
 
-if not (sys.argv[1].startswith('-')) and (sys.argv[1] not in ('clean')):
+if len(sys.argv) > 1 and (
+        not sys.argv[1].startswith('-') and sys.argv[1] != 'clean'):
     try:
         with open('certain/CertainForm.py'):
             pass
-    except Exception:
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
         sys.argv.insert(1, 'prebuild')
         sys.argv.insert(2, 'build_sphinx')
 
@@ -133,7 +136,7 @@ def get_git_version(abbrev=4):
     return version
 
 
-if sys.argv[1] == 'clean':
+if len(sys.argv) > 1 and sys.argv[1] == 'clean':
     for dir in ['setup', 'certain.egg-info']:
         try:
             for dirpath, dirs, files in os.walk(dir, topdown=False):
@@ -187,5 +190,5 @@ setup(
     install_requires = ['dulwich', 'M2Crypto'],
     scripts = ['bin/certain', 'bin/storeserver', 'bin/certaingui'],
     data_files = data_files,
-    cmdclass = cmdclass
+    cmdclass = cmdclass,
     )
