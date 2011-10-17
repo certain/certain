@@ -31,7 +31,7 @@ builddeb:
 	git-buildpackage -rfakeroot --git-postbuild='make clean'
 
 buildrpm:
-	$(CURDIR)/setup.py bdist_rpm
+	$(CURDIR)/setup.py bdist_rpm --post-install rpm/postinst --post-uninstall rpm/postrm
 
 clean:
 	$(CURDIR)/setup.py clean
