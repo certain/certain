@@ -47,7 +47,7 @@ class store(StoreBase):
     def setup(self):
         for dir in (self.storedir, self.webdir, self.datadir):
             try:
-                os.mkdir(dir)
+                os.makedirs(dir)
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
