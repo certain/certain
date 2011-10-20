@@ -3,7 +3,7 @@ Section: misc
 Priority: extra
 Maintainer: Matthew Richardson <m.richardson@ed.ac.uk>
 Build-Depends: debhelper (>= 7), python-support (>=0.6), cdbs (>= 0.4.49), python-sphinx (>= 0.6), python-qt4, git-buildpackage
-Standards-Version: 3.8.3
+Standards-Version: 3.9.1
 
 Package: certain
 Architecture: all
