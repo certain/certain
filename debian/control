@@ -2,12 +2,12 @@ Source: certain
 Section: misc
 Priority: extra
 Maintainer: Matthew Richardson <m.richardson@ed.ac.uk>
-Build-Depends: debhelper (>= 7), python (>=2.6), python-support (>=0.6), cdbs (>= 0.4.49), python-sphinx (>= 0.6), python-qt4, git-buildpackage
+Build-Depends: debhelper (>= 7), python (>=2.6), python-support (>=0.90), cdbs (>= 0.4.49), python-sphinx (>= 0.6), python-qt4, git-buildpackage
 Standards-Version: 3.9.1
 
 Package: certain
 Architecture: all
-Depends: python (>=2.6), python-m2crypto, ${misc:Depends}
+Depends: python (>=2.6), python-support (>= 0.90), python-m2crypto, ${misc:Depends}
 Recommends: python-svn, python-dulwich, python-qt4
 Description: X509 Certificate Management Service
  Network service which accepts certificate requests, signs them, and stores the
