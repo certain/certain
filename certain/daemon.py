@@ -24,6 +24,7 @@ __version__ = "0.2"
 # Standard Python modules.
 import os                   # Miscellaneous OS interfaces.
 import sys                  # System-specific parameters and functions.
+import pwd
 
 # Default daemon parameters.
 # File mode creation mask of the daemon.
@@ -62,6 +63,14 @@ def create_daemon():
         # group leader of the new process group, we call os.setsid().  The
         # process is also guaranteed not to have a controlling terminal.
         os.setsid()
+
+        if (os.getuid() == 0):
+            # We don't want to run as root - time to drop privs
+            # If we're running as non-root, assume we're already
+            # running as a suitable account and do nothing.
+            uid, gid = pwd.getpwnam('certain')[2:4]
+            os.setgid(gid)
+            os.setuid(uid)
 
         # Is ignoring SIGHUP necessary?
         #
