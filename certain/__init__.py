@@ -40,7 +40,7 @@ from . import StoreHandler
 from . import ExpiryHandler
 
 
-DEFAULT_CONFIG_FILE = "/etc/certain/certain.cfg"
+DEFAULT_CONFIG_FILE = "/etc/certain/certain.conf"
 
 __all__ = ['pending_csrs',
            'sign_csr',
@@ -897,7 +897,7 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
     config = ConfigParser.ConfigParser({'CN': socket.getfqdn()})
     # Read in the default config options
     if not config.read(os.path.join(os.path.dirname(__file__),
-            "certain.cfg.defaults")):
+            "certain.conf.defaults")):
         raise ConfigParser.Error("Unable to read defaults file. "
             "Try reinstalling the package.")
     if not config.read(configfile):

@@ -56,11 +56,11 @@ class PreBuildCommand(Command):
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        #Copy certain.cfg.defaults to certain.cfg
-        with open('setup/etc/certain/certain.cfg', 'w') as c:
+        #Copy certain.conf.defaults to certain.conf
+        with open('setup/etc/certain/certain.conf', 'w') as c:
             c.write("# Certain's default configuration is given below.\n"
                     "# Uncomment lines as appropriate to change.\n\n")
-            with open('certain/certain.cfg.defaults') as f:
+            with open('certain/certain.conf.defaults') as f:
                 for line in f:
                     if line.isspace() or line.startswith('['):
                         c.write(line)
@@ -71,7 +71,7 @@ class PreBuildCommand(Command):
         #Build reSt config options from defaults
         comment = []
         with open('sphinx/config.rst', 'w') as rst:
-            with open('certain/certain.cfg.defaults') as cfg:
+            with open('certain/certain.conf.defaults') as cfg:
                 for line in cfg:
                     if line.startswith('['):
                         rst.write(line + "------------------------------\n\n")
@@ -169,7 +169,7 @@ data_files.append(
     (os.path.join('/etc', 'init.d'),
     ['etc/init.d/certain', 'etc/init.d/storeserver']))
 data_files.append(
-    (os.path.join('/etc', 'certain'), ['setup/etc/certain/certain.cfg']))
+    (os.path.join('/etc', 'certain'), ['setup/etc/certain/certain.conf']))
 
 cmdclass = {}
 cmdclass['prebuild'] = PreBuildCommand
@@ -183,7 +183,7 @@ setup(
     url = 'https://github.com/certain/certain',
     packages = find_packages(),
     include_package_data = True,
-    package_data = {'': ['certain.cfg.defaults', 'RELEASE-VERSION']},
+    package_data = {'': ['certain.conf.defaults', 'RELEASE-VERSION']},
     install_requires = ['dulwich', 'M2Crypto'],
     scripts = ['bin/certain', 'bin/storeserver', 'bin/certaingui'],
     data_files = data_files,

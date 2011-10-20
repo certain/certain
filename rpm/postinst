@@ -19,7 +19,7 @@ chown certain:certain $f
 chmod 755 $f
 done
 
-for f in /etc/certain/certain.cfg; do
+for f in /etc/certain/certain.conf; do
 chown certain:certain $f
 chmod 644 $f
 done

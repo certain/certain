@@ -7,7 +7,7 @@
 
    certain-cmd.rst
    certain-py.rst
-   certain-cfg.rst
+   certain-conf.rst
 
 Certain is an X509 Certificate management master-client service.  The master generates its own CA certificates, receives certificate signing requests over the network, and then signs these and pushes the signed certificates to a store.
 
@@ -36,7 +36,7 @@ The default configuration options provided should work 'out-of-the-box', provide
 Configuration
 =============
 
-For information on the syntax and options available for configuring Certain, please see: :doc:`certain-cfg`
+For information on the syntax and options available for configuring Certain, please see: :doc:`certain-conf`
 
 There are 2 aspects to configuring Certain - configuring a **master**, and configuring the **clients**.
 

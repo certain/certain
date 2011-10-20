@@ -27,7 +27,7 @@ Options
 
 .. cmdoption:: -c, --config
 
-   Configuration file to use (defaults to ``/etc/certain/certain.cfg``)
+   Configuration file to use (defaults to ``/etc/certain/certain.conf``)
 
 .. cmdoption:: -d, --daemon
 
@@ -57,6 +57,6 @@ Files
 
 The default configuration file for Certain is:
 
-``/etc/certain/certain.cfg``
+``/etc/certain/certain.conf``
 
 

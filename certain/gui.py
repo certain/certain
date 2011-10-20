@@ -118,7 +118,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def _loadDialog(self):
         filename = QtGui.QFileDialog.getOpenFileName(self, "Open File",
-            "", "Configuration files (*.cfg);;All files (*.*)")
+            "", "Configuration files (*.conf);;All files (*.*)")
         if filename:
             self.configFile = str(filename)
             try:
