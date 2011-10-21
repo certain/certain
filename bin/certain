@@ -54,7 +54,7 @@ def main():
                       default="/var/run/certain/certain.pid")
     parser.add_option("-f", "--foreground",
                       action="store_true", dest="foreground",
-                      help="Force the daemon to run the foreground")
+                      help="Force the daemon to run the foreground.")
 
     options, args = parser.parse_args()
 
@@ -75,7 +75,7 @@ def main():
             os.setgid(gid)
             os.setuid(uid)
         if certain.config.get('global', 'LogLevel') != 'DEBUG' and not (
-                option.foreground):
+                options.foreground):
             certain.daemon.create_daemon()
         with certain.pidfile(options.pidfile):
             certain.launch_daemon()
