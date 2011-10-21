@@ -41,6 +41,14 @@ def main():
     name = certain.config.get('store', 'StoreServer')
     storeserver = __import__('certain.StoreServer.' + name, fromlist=name)
 
+    if (os.getuid() == 0):
+        # We don't want to run as root - time to drop privs
+        # If we're running as non-root, assume we're already
+        # running as a suitable account and do nothing.
+        uid, gid = pwd.getpwnam('certain')[2:4]
+        os.setgid(gid)
+        os.setuid(uid)
+
     # If the log level is not set to debug, make the server a daemon.
     if certain.config.get('global', 'LogLevel') != 'DEBUG' or options.daemon:
         certain.daemon.create_daemon()
