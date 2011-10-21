@@ -41,7 +41,6 @@ clean:
 	rm -rf debian/certain*
 	rm -rf debian/files
 	rm -rf debian/python-module-stampdir/
-	if test -e /etc/debian-version; \
-	then fakeroot $(MAKE) -f $(CURDIR)/debian/rules clean; \
-	fi
+	rm -rf certain/certain.egg-info/
+	fakeroot $(MAKE) -f $(CURDIR)/debian/rules clean
 	find . -name '*.py[oc]' -delete
