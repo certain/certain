@@ -12,7 +12,7 @@ for f in /etc/certain/CA /etc/certain/CA/private /etc/certain/private; do
     fi
 done
 
-for f in /etc/certain /etc/certain/CSRCache /etc/certain/certs /var/log/certain; do
+for f in /etc/certain /etc/certain/CSRCache /etc/certain/certs /var/log/certain /var/run/certain; do
     if ! dpkg-statoverride --list $f > /dev/null; then
        dpkg-statoverride --update --add certain certain 0755 $f
     fi

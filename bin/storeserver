@@ -31,7 +31,7 @@ def main():
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
-                      default="/var/run/storeserver.pid")
+                      default="/var/run/certain/storeserver.pid")
 
     options, args = parser.parse_args()
 
