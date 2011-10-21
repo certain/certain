@@ -20,6 +20,7 @@ used by programs or scripts which know they need up to date certificates.
 from __future__ import absolute_import
 import certain
 import certain.daemon
+from certain import log
 import os
 from optparse import OptionParser
 import sys
@@ -78,7 +79,10 @@ def main():
                 options.foreground):
             certain.daemon.create_daemon()
         with certain.pidfile(options.pidfile):
-            certain.launch_daemon()
+            try:
+                certain.launch_daemon()
+            except Exception:
+                log.exception("Unhandled exception in daemon:")
 
     if options.sign:
         with certain.StoreHandler.dispatch(
