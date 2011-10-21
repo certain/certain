@@ -23,7 +23,7 @@ import certain.daemon
 import os
 from optparse import OptionParser
 import sys
-
+import pwd
 
 if sys.hexversion < 0x02060000:
     print >>sys.stderr, "Error: Python 2.6 or greater required."
@@ -64,6 +64,13 @@ def main():
         certain.make_cert()
 
     if options.daemon:
+        if (os.getuid() == 0):
+            # We don't want to run as root - time to drop privs
+            # If we're running as non-root, assume we're already
+            # running as a suitable account and do nothing.
+            uid, gid = pwd.getpwnam('certain')[2:4]
+            os.setgid(gid)
+            os.setuid(uid)
         if certain.config.get('global', 'LogLevel') != 'DEBUG':
             certain.daemon.create_daemon()
         with certain.pidfile(options.pidfile):
