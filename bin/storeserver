@@ -28,6 +28,9 @@ def main():
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
                       help="Start StoreServer daemon.")
+    parser.add_option("-f", "--foreground",
+                      action="store_true", dest="foreground",
+                      help="Force the daemon to run in the foreground.")
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
@@ -50,7 +53,8 @@ def main():
         os.setuid(uid)
 
     # If the log level is not set to debug, make the server a daemon.
-    if certain.config.get('global', 'LogLevel') != 'DEBUG' or options.daemon:
+    if (certain.config.get('global', 'LogLevel') != 'DEBUG' or
+            options.daemon) and not options.foreground:
         certain.daemon.create_daemon()
 
     with certain.pidfile(options.pidfile):
