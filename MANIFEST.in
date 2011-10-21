@@ -1,7 +1,7 @@
 recursive-include certain *.py *.txt
 recursive-include bin *
 recursive-include etc *
-include setup/etc/certain/certain.cfg
+include setup/etc/certain/certain.conf
 include setup/sphinx/html/*
 
 

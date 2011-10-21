@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -e
+
+CETC=/etc/certain
+
+groupadd --system --force certain >/dev/null 2>&1
+getent passwd certain >/dev/null 2>&1 || useradd --system -c "Certain daemon" --gid certain --shell /bin/false certain
+
+mkdir -p $CETC/CA $CETC/CA/private $CETC/private $CETC/CSRCache $CETC/certs /var/log/certain /var/run/certain
+
+for f in /etc/certain/CA /etc/certain/CA/private /etc/certain/private; do
+chown certain:certain $f
+chmod 700 $f
+done
+
+for f in /etc/certain /etc/certain/CSRCache /etc/certain/certs /var/log/certain /var/run/certain; do
+chown certain:certain $f
+chmod 755 $f
+done
+
+for f in /etc/certain/certain.conf; do
+chown certain:certain $f
+chmod 644 $f
+done
