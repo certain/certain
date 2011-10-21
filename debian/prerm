@@ -2,6 +2,9 @@
 
 set -e
 
+#Stop the service from running before removing
+stop certain || true
+
 # Copied from dh_pysupport generated prerm
 if which update-python-modules >/dev/null 2>&1; then
     update-python-modules -c certain.public
