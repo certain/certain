@@ -28,18 +28,20 @@ endif
 
 builddeb:
 	mkdir -p setup/deb/
-	git-buildpackage --git-postbuild='make clean'
+	git-buildpackage -rfakeroot --git-postbuild='make clean'
 
 buildrpm:
-	$(CURDIR)/setup.py bdist_rpm --post-install=rpm/postinstall --re-uninstall=rpm/preuninstall
-
-
+	$(CURDIR)/setup.py bdist_rpm
 
 clean:
 	$(CURDIR)/setup.py clean
 	rm -rf build/
+	rm -rf dist/
+	rm -rf setup/
 	rm -rf debian/certain*
 	rm -rf debian/files
 	rm -rf debian/python-module-stampdir/
-	$(MAKE) -f $(CURDIR)/debian/rules clean
+	if test -e /etc/debian-version; \
+	then fakeroot $(MAKE) -f $(CURDIR)/debian/rules clean; \
+	fi
 	find . -name '*.py[oc]' -delete
