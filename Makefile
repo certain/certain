@@ -40,9 +40,4 @@ clean:
 	rm -rf build/
 	rm -rf dist/
 	rm -rf setup/
-	rm -rf debian/certain*
-	rm -rf debian/files
-	rm -rf debian/python-module-stampdir/
-	rm -rf certain/certain.egg-info/
-	fakeroot $(MAKE) -f $(CURDIR)/debian/rules clean
 	find . -name '*.py[oc]' -delete
