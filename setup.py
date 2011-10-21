@@ -7,19 +7,23 @@ from setuptools import setup, find_packages
 from distutils.core import setup, Command
 import errno
 import os
-import os.path
 from PyQt4 import uic
 from subprocess import Popen, PIPE
 
 
-if not sys.argv[1].startswith('-'):
-    if sys.argv[1] not in ('clean'):
-        if not os.path.exists('setup'):
-            sys.argv.insert(1, 'prebuild')
-            sys.argv.insert(2, 'build_sphinx')
+if not (sys.argv[1].startswith('-')) and (sys.argv[1] not in ('clean')):
+    try:
+        with open('certain/CertainForm.py'):
+            pass
+    except Exception:
+        sys.argv.insert(1, 'prebuild')
+        sys.argv.insert(2, 'build_sphinx')
 
 
-class CustomCommand(Command):
+class PreBuildCommand(Command):
+    """Custom commands to be run at start of setup.py"""
+
+    description = "Custom commands to be run before main command"
 
     user_options = []
 
@@ -28,12 +32,6 @@ class CustomCommand(Command):
 
     def finalize_options(self):
         pass
-
-
-class PreBuildCommand(CustomCommand):
-    """Custom commands to be run at start of setup.py"""
-
-    description = "Custom commands to be run before main command"
 
     def run(self):
         compile_ui()
@@ -67,6 +65,7 @@ def generate_config():
                     c.write(line)
                 else:
                     c.write("#" + line)
+
 
 def generate_docs():
     #Build reSt config options from defaults
@@ -161,7 +160,7 @@ for (dirpath, dirs, files) in os.walk(os.path.join('setup', 'sphinx')):
     #strip off the initial 'sphinx/build/' for tgt path creation
     subdir = dirpath[13:]
     sphinxfiles.append(
-        (os.path.join('share', 'doc', 'certain', 'html', subdir),
+        (os.path.join('share', 'doc', 'certain', subdir),
          [os.path.join(dirpath, name) for name in files]))
 
 #Add data files to array
@@ -190,4 +189,3 @@ setup(
     data_files = data_files,
     cmdclass = cmdclass
     )
-
