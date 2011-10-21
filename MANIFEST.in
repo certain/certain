@@ -1,6 +1,6 @@
 recursive-include certain *.py *.txt *.defaults
 recursive-include bin *
-recursive-include etc *
 include setup/etc/certain/certain.conf
 include setup/sphinx/html/*
-include setup/etc/init/certain.conf
+include etc/init/certain.conf
+include etc/init/storeserver.conf

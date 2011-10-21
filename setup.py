@@ -166,8 +166,8 @@ for (dirpath, dirs, files) in os.walk(os.path.join('setup', 'sphinx')):
 #Add data files to array
 data_files.extend(sphinxfiles)
 data_files.append(
-    (os.path.join('/etc', 'init.d'),
-    ['etc/init.d/certain', 'etc/init.d/storeserver']))
+    (os.path.join('/etc', 'init'),
+    ['etc/init/certain.conf', 'etc/init/storeserver.conf']))
 data_files.append(
     (os.path.join('/etc', 'certain'), ['setup/etc/certain/certain.conf']))
 
