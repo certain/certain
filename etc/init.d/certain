@@ -1,4 +1,13 @@
 #!/bin/sh
+################################################################
+#                                                              #
+#            Use of this init script is deprecated.            #
+#    We are now using an Upstart script (init/certain.conf)    #
+#    This script is left in the repo purely as a guide for     #
+#         distros that have not converted to Upstart.          #
+#                   USE AT YOUR OWN RISK!                      #
+#                                                              #
+################################################################
 
 ### BEGIN INIT INFO
 # Provides: certain
