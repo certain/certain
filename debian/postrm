@@ -12,3 +12,4 @@ if getent passwd certain >/dev/null 2>&1; then
     userdel certain
 fi
 
+#DEBHELPER#

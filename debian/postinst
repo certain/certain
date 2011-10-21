@@ -30,3 +30,4 @@ if which update-python-modules >/dev/null 2>&1; then
         update-python-modules  certain.public
 fi
 
+#DEBHELPER#
