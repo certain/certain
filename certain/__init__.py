@@ -860,9 +860,11 @@ def csr_cache_file(name):
     return os.path.join(config.get('global', 'CSRCache'), name) + ".csr"
 
 
+@contextmanager
 def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
-    """A thin wrapper around os.open and os.fdopen to return a file-like
-    object.
+    """A context manager to handle the atomic creation of a file. This uses a
+    thin wrapper around os.open and os.fdopen to return a file-like object. If
+    an exception is thrown inside the with block, this file is then unlinked.
 
     With the default arguments, ask for a file to be created only if it doesn't
     already exist. If it does, expect an OSError exception "e" with
@@ -881,7 +883,12 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
     """
 
-    return os.fdopen(os.open(filename, flag, mode), 'w')
+    newfile = os.fdopen(os.open(filename, flag, mode), 'w')
+    try:
+        yield newfile
+    except Exception:
+        os.unlink(filename)
+        raise
 
 
 def parse_config(configfile=DEFAULT_CONFIG_FILE):
