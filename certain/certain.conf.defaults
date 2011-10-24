@@ -127,10 +127,10 @@ ExpiryDeadline = 608400
 [cert]
 
 #Common Name field of client certificate (defaults to client FQDN)
-CN = client.example.com
+#CN = client.example.com
 
 #Email address field of client certificate
-Email = admin@client.example.com
+Email = certain@certain
 
 #Organisational Unit field of client certificate
 OU = Certain Unit
