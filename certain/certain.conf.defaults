@@ -153,6 +153,8 @@ CertLifetime = 315360000
 #Time before client certificate expiry to send new CSR (seconds)
 ExpiryDeadline = 608400
 
+#Bitlength of the generated certificate
+Bits = 2048
 
 [email]
 # note: CA expiry notification emails will be sent to the email address given in the CA Email field.
