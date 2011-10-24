@@ -63,6 +63,12 @@ def dispatch(name):
     try:
         store = __import__(__name__ + '.' + name,
             fromlist=name).store
-    except (ImportError, AttributeError):
-        return storeerror(name)
+    except ImportError as e:
+        if e.message.startswith('No module named ') and e.message.split()[3] == name:
+            return storeerror(name)
+        raise
+    except AttributeError as e:
+        if e.message == "'module' object has no attribute 'store'":
+            return storeerror(name)
+        raise
     return store()
