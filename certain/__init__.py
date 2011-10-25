@@ -101,6 +101,13 @@ class CACertError(Exception):
         Exception.__init__(self, args)
 
 
+class FileExistsError(Exception):
+    """Error where target passed to creat() already exists."""
+
+    def __init__(self, args="File already exists."):
+        Exception.__init__(self, args)
+
+
 class VerboseExceptionFormatter(logging.Formatter):
     """Custom formatting of logged exceptions."""
 
@@ -860,20 +867,21 @@ def csr_cache_file(name):
     return os.path.join(config.get('global', 'CSRCache'), name) + ".csr"
 
 
-@contextmanager
-def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
-    """A context manager to handle the atomic creation of a file. This uses a
-    thin wrapper around os.open and os.fdopen to return a file-like object. If
-    an exception is thrown inside the with block, this file is then unlinked.
+class creat(object):
+    """A context manager to handle the atomic creation of a file, if it does
+    not already exist. This creates a temporary file, returning a file-like
+    object, atomically linking this to the real file on successful
+    completion, and removing the temporary file.
 
-    With the default arguments, ask for a file to be created only if it doesn't
-    already exist. If it does, expect an OSError exception "e" with
-    e.errno == errno.EEXIST.
+    If the file already exists, creat will return a
+    py:exc:`FileExistsError` exception.
+    When using creat one should thus always expect to handle this exception.
+
+    On POSIX systems this class will guarantee that the file will either
+    be created atomically with its final contents, or will never be created.
 
     :type filename: string
     :param filename: File to create
-
-    :param flag: flags for file opening
 
     :type mode: int
     :param mode: File permissions mode
@@ -883,12 +891,39 @@ def creat(filename, flag=os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode=0777):
 
     """
 
-    newfile = os.fdopen(os.open(filename, flag, mode), 'w')
-    try:
-        yield newfile
-    except Exception:
-        os.unlink(filename)
-        raise
+    def __init__(self, filename, mode=0777):
+        self.filename = filename
+        self.mode = mode
+        self.tmpfile = tempfile.NamedTemporaryFile(prefix=".tmp",
+            dir=os.path.dirname(self.filename), delete=False)
+
+    def __enter__(self):
+        return self.tmpfile
+
+    def __exit__(self, type, value, traceback):
+        self.tmpfile.close()
+        if (type, value, traceback) != (None, None, None):
+            # An exception was raised.
+            try:
+                os.unlink(self.tmpfile.name)
+            except OSError, e:
+                # Only ignore "No such file or directory"
+                if e.errno != errno.ENOENT:
+                    raise
+            # Returning nothing (None == False) here means the exception will
+            # be re-raised to the code containing the with statement.
+        else:
+            try:
+                os.link(self.tmpfile.name, self.filename)
+                if self.mode != 0777:
+                    os.chmod(self.filename, self.mode)
+            except OSError, e:
+                # Only transform "File exists" into our own Exception.
+                if e.errno == errno.EEXIST:
+                    raise FileExistsError()
+                raise
+            finally:
+                os.unlink(self.tmpfile.name)
 
 
 def parse_config(configfile=DEFAULT_CONFIG_FILE):
@@ -950,9 +985,7 @@ def make_ca():
         with creat(ca_key_file(), mode=0666) as f_key:
             key = make_key(config.getint('ca', 'Bits'))
             f_key.write(key.as_pem(callback=lambda passphrase: "certain"))
-    except OSError, e:
-        if e.errno != errno.EEXIST: # File exists
-            raise
+    except FileExistsError:
         key = key_from_file(ca_key_file())
 
     with tempfile.NamedTemporaryFile(
@@ -999,18 +1032,14 @@ def make_cert():
 
     #Make client key and CSR if needed
     CN = config.get('cert', 'CN')
-
     log.info("Making key and CSR for %s", CN)
 
-    #We never want to overwrite a key file, so do nothing if it already exists.
     try:
         #Use the default passphrase 'certain' on the key
         with creat(key_file(CN), mode=0666) as f_key:
             key = make_key(config.getint('cert', 'Bits'))
             f_key.write(key.as_pem(callback=lambda passphrase: "certain"))
-    except OSError, e:
-        if e.errno != errno.EEXIST: # File exists
-            raise
+    except FileExistsError:
         key = key_from_file(key_file(CN))
 
     with tempfile.NamedTemporaryFile(
