@@ -9,7 +9,7 @@ import errno
 import os
 from PyQt4 import uic
 from subprocess import Popen, PIPE
-
+import certain
 
 if len(sys.argv) > 1 and (
         not sys.argv[1].startswith('-') and sys.argv[1] != 'clean'):
@@ -21,6 +21,57 @@ if len(sys.argv) > 1 and (
             raise
         sys.argv.insert(1, 'prebuild')
         sys.argv.insert(2, 'build_sphinx')
+
+
+class Make_AutoDoc(object):
+
+    def __init__(self):
+        self.classes = []
+        self.modules = []
+        self.functions = []
+        self.output = []
+
+        self.dict = { 'class' : self.ClassText,
+                      'type' : self.ClassText,
+                      'classobj' : self.ClassText,
+                      'function' : self.FunctionText,
+                      'module' : self.ModuleText,
+                      }
+
+
+    def Undef(self, objtype, func=None):
+        pass
+    #    print "X", objtype, func, "\n"
+
+    def ClassText(self, objtype, func=None):
+        self.classes.append("%s %s\n   %s\n" % (
+                ".. autoclass::", func, ":members:"))
+
+    def FunctionText(self, objtype, func=None):
+        self.functions.append("%s %s\n" % (".. autofunction::", func))
+
+    def ModuleText(self, objtype, func=None):
+        try:
+            if not getattr(certain, func).__file__.__contains__('certain'):
+                return
+        except AttributeError:
+            #Some modules have no __file__ attribute - all Certain ones should
+            return
+        self.modules.append("%s\n%s\n%s certain.%s\n   %s\n" % (
+                func, '-' * len(func), ".. automodule::", func, ":members:"))
+
+    def make_output(self):
+        self.output.append(":mod:`certain` --- Python Module\n")
+        self.output.append("Modules\n=======\n")
+        self.output.extend(self.modules)
+        self.output.append("Classes\n=======\n")
+        self.output.append(".. automodule:: certain\n")
+        self.output.extend(self.classes)
+        self.output.append("Functions\n=========\n")
+        self.output.extend(self.functions)
+
+        with open('sphinx/certain-py.rst', 'w') as f_py:
+            f_py.write('\n'.join(self.output))
 
 
 class PreBuildCommand(Command):
@@ -68,6 +119,17 @@ class PreBuildCommand(Command):
                         c.write("#" + line)
 
     def generate_docs(self):
+
+        autodoc = Make_AutoDoc()
+
+        for func in (dir(certain)):
+            objtype  =  str(
+                type(getattr(certain, func))
+                ).split("'")[1]
+            autodoc.dict.setdefault(objtype, autodoc.Undef)(objtype, func)
+
+        autodoc.make_output()
+
         #Build reSt config options from defaults
         comment = []
         with open('sphinx/config.rst', 'w') as rst:
@@ -142,7 +204,9 @@ if len(sys.argv) > 1 and sys.argv[1] == 'clean':
             os.rmdir(dir)
         except OSError:
             pass
-    for file in ['certain/CertainForm.py', 'sphinx/config.rst']:
+    for file in ['certain/CertainForm.py',
+                 'sphinx/config.rst',
+                 'sphinx/certain-py.rst']:
         try:
             os.unlink(file)
         except OSError:
