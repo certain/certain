@@ -10,11 +10,11 @@ The command-line tool is used to control the daemon on the master and send and r
 Syntax
 ======
 
-**certain --help**
+**certain \-\-help**
 
-**certain --daemon**
+**certain \-\-daemon**
 
-**certain --get | --makecert | --sign**
+**certain \-\-get | \-\-makecert | \-\-sign**
 
 
 Options
