@@ -8,4 +8,3 @@ etc/certain/private
 etc/certain/store
 etc/certain/CA/private
 var/log/certain
-var/run/certain
