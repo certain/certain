@@ -19,7 +19,7 @@ for f in /etc/certain /etc/certain/CSRCache /etc/certain/certs /var/log/certain;
 done
 
 
-for f in /etc/certain/certain.cfg; do
+for f in /etc/certain/certain.conf; do
     if ! dpkg-statoverride --list $f > /dev/null; then
         dpkg-statoverride --update --add certain certain 644 $f
     fi
