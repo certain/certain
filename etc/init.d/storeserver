@@ -15,11 +15,12 @@
 NAME="storeserver"
 DAEMON=/usr/bin/${NAME}
 DESC="Storeserver Certificate Store Service"
-PIDFILE=/var/run/${NAME}.pid
+PIDFILE=/var/run/certain/${NAME}.pid
 
 set -e
 
 test -x ${DAEMON} || exit 0
+mkdir -p /var/run/certain
 
 
 [ -z "$SERVER_USER" ] && SERVER_USER=certain
