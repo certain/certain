@@ -3,8 +3,7 @@
 #git describe versioning magic from http://gist.github.com/300803
 
 import sys
-from setuptools import setup, find_packages
-from distutils.core import setup, Command
+from setuptools import setup, find_packages, Command
 import errno
 import os
 from PyQt4 import uic
