@@ -55,7 +55,7 @@ class AutoDoc(object):
             #Some modules have no __file__ attribute - all Certain ones should
             if not hasattr(func, '__module__') or self.module.__name__ not in func.__module__:
                 return
-        print >>self.f_py, ".. autoclass:: %s\n   :members:" % func.__name__
+        print >>self.f_py, "\n.. autoclass:: %s\n   :members:" % func.__name__
 
     def parse_function(self, name, parentmodule=None):
         if parentmodule:
@@ -92,7 +92,7 @@ class AutoDoc(object):
             #Some modules have no __file__ attribute - all Certain ones should
             if not hasattr(func, '__module__') or self.module.__name__ not in func.__module__:
                 return
-        print >>self.f_py, "\n%s\n%s\n.. automodule:: %s\n   :members:" % (
+        print >>self.f_py, "\n%s\n%s\n\n.. automodule:: %s\n   :members:" % (
                 name, '-' * len(name), name)
 
         objects = []
