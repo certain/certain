@@ -8,7 +8,8 @@ import errno
 import os
 from PyQt4 import uic
 from subprocess import Popen, PIPE
-
+import certain
+from collections import defaultdict
 
 if len(sys.argv) > 1 and (
         not sys.argv[1].startswith('-') and sys.argv[1] != 'clean'):
@@ -20,6 +21,100 @@ if len(sys.argv) > 1 and (
             raise
         sys.argv.insert(1, 'prebuild')
         sys.argv.insert(2, 'build_sphinx')
+
+
+class AutoDoc(object):
+
+    def __init__(self, module):
+        self.module = module
+
+        self.dispatch = defaultdict(lambda: self.Undef,
+                     { 'class': self.parse_class,
+                      'type': self.parse_class,
+                      'classobj': self.parse_class,
+                      'abc.ABCMeta': self.parse_class,
+                      'function': self.parse_function,
+                      'module': self.parse_module,
+                      })
+
+
+    def Undef(self, name, parentmodule=None):
+        pass
+        # print >>sys.stderr, "WARNING: Unhandled object: %s %s" % (parentmodule,name)
+
+    def parse_class(self, name, parentmodule=None):
+        if parentmodule:
+                func = getattr(parentmodule, name.split(".")[-1])
+        else:
+                func = getattr(self.module, name)
+        try:
+            if self.module.__name__ not in func.__file__:
+                return
+        except AttributeError:
+            #Some modules have no __file__ attribute - all Certain ones should
+            if not hasattr(func, '__module__') or self.module.__name__ not in func.__module__:
+                return
+        print >>self.f_py, "\n.. autoclass:: %s\n   :members:" % func.__name__
+
+    def parse_function(self, name, parentmodule=None):
+        if parentmodule:
+                func = getattr(parentmodule, name.split(".")[-1])
+        else:
+                func = getattr(self.module, name)
+        try:
+            if self.module.__name__ not in func.__file__:
+                return
+        except AttributeError:
+            #Some modules have no __file__ attribute - all Certain ones should
+            if not hasattr(func, '__module__') or self.module.__name__ not in func.__module__:
+                return
+        # We do not need to list functions explicitly, as they included via automodule.
+        #print >>self.f_py, ".. autofunction:: %s" % func.__name__
+
+    def parse_module(self, name='', parentmodule=None):
+        if parentmodule:
+            if name:
+                func = getattr(parentmodule, name.split(".")[-1])
+            else:
+                func = parentmodule
+                name = parentmodule.__name__
+        else:
+            if name:
+                func = getattr(self.module, name)
+            else:
+                func = self.module
+                name = self.module.__name__
+        try:
+            if self.module.__name__ not in func.__file__:
+                return
+        except AttributeError:
+            #Some modules have no __file__ attribute - all Certain ones should
+            if not hasattr(func, '__module__') or self.module.__name__ not in func.__module__:
+                return
+        print >>self.f_py, "\n%s\n%s\n\n.. automodule:: %s\n   :members:" % (
+                name, '-' * len(name), name)
+
+        objects = []
+        for attr in dir(func):
+            obj = getattr(func, attr)
+            objtype = str(
+                type(obj)
+                ).split("'")[1]
+            objects += ((objtype, self.dispatch[objtype], name + '.' + attr), )
+        for obj in sorted(objects, key=self.sortclasses):
+            obj[1](obj[2], func) # Call the appropriate parser
+
+    @staticmethod
+    def sortclasses(a):
+        return a[0] not in ('class', 'type', 'classobj'),  a[1]
+
+    def generate(self, f_py):
+        self.f_py = f_py
+        print >>f_py, ":mod:`%s` --- Python Module" % self.module.__name__
+        print >>f_py
+        print >>f_py, "Modules"
+        print >>f_py, "======="
+        self.parse_module()
 
 
 class PreBuildCommand(Command):
@@ -67,6 +162,11 @@ class PreBuildCommand(Command):
                         c.write("#" + line)
 
     def generate_docs(self):
+
+        autodoc = AutoDoc(certain)
+        with open('sphinx/certain-py.rst', 'w') as f_py:
+            autodoc.generate(f_py)
+
         #Build reSt config options from defaults
         comment = []
         with open('sphinx/config.rst', 'w') as rst:
@@ -141,7 +241,9 @@ if len(sys.argv) > 1 and sys.argv[1] == 'clean':
             os.rmdir(dir)
         except OSError:
             pass
-    for file in ['certain/CertainForm.py', 'sphinx/config.rst']:
+    for file in ['certain/CertainForm.py',
+                 'sphinx/config.rst',
+                 'sphinx/certain-py.rst']:
         try:
             os.unlink(file)
         except OSError:
