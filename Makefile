@@ -15,7 +15,7 @@ source:
 	$(CURDIR)/setup.py sdist
 
 install:
-	$(CURDIR)/setup.py install --prefix=/usr --root $(DESTDIR)
+	$(CURDIR)/setup.py install
 
 release:
 ifndef REL
@@ -31,8 +31,7 @@ builddeb:
 	git-buildpackage -rfakeroot --git-postbuild='make clean'
 
 buildrpm:
-
-	$(CURDIR)/setup.py bdist_rpm --post-install rpm/postinst --pre-uninstall rpm/prerm --post-uninstall rpm/postrm
+	$(CURDIR)/setup.py bdist_rpm
 
 
 clean:
