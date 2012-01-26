@@ -947,9 +947,16 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
             "Unable to read Configuration File: %s" % (configfile, ))
     loglevel = getattr(logging, config.get('global', 'LogLevel'))
     if loglevel == logging.DEBUG:
-        logformat = VerboseExceptionFormatter('%(name)s %(levelname)s %(message)s')
+        logformat = VerboseExceptionFormatter('%(message)s')
     else:
-        logformat = logging.Formatter('%(name)s: %(levelname)s %(message)s')
+        logformat = logging.Formatter('%(message)s')
+
+    for handler in log.handlers:
+        if isinstance(handler, logging.handlers.SysLogHandler):
+            log.removeHandler(handler)
+            continue
+        handler.setLevel(loglevel)
+        handler.setFormatter(logformat)
 
     syslog = logging.handlers.SysLogHandler(address='/dev/log',
                                             facility=config.get('global',
