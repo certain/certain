@@ -21,6 +21,7 @@ set -e
 
 test -x ${DAEMON} || exit 0
 mkdir -p /var/run/certain
+chown certain:certain /var/run/certain
 
 
 [ -z "$SERVER_USER" ] && SERVER_USER=certain
