@@ -48,7 +48,10 @@ def main():
                       help="Update certificates from the central store.")
     parser.add_option("-d", "--daemon",
                       action="store_true", dest="daemon",
-                      help="Start Certain daemon.")
+                      help="Start Certain as a daemon.")
+    parser.add_option("-M", "--master",
+                      action="store_true", dest="master",
+                      help="Start Certain master instead of the client daemon.")
     parser.add_option("-p", "--pid-file",
                       dest="pidfile",
                       help="Specify an alternate PID file.",
@@ -68,7 +71,7 @@ def main():
         certain.make_cert()
 
     if options.daemon:
-        if (os.getuid() == 0):
+        if os.getuid() == 0:
             # We don't want to run as root - time to drop privs
             # If we're running as non-root, assume we're already
             # running as a suitable account and do nothing.
@@ -80,7 +83,10 @@ def main():
             certain.daemon.create_daemon()
         with certain.pidfile(options.pidfile):
             try:
-                certain.launch_daemon()
+                if options.master:
+                    certain.launch_master()
+                else:
+                    certain.launch_daemon()
             except Exception:
                 log.exception("Unhandled exception in daemon:")
 

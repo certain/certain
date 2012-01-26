@@ -1232,39 +1232,39 @@ def launch_daemon():
     except ConfigParser.Error:
         log.warn("PollTimer value not set in config", exc_info=sys.exc_info())
 
-    if config.get('global', 'IsMaster'):
-        #Listen for incoming messages
-        csrsock = socket.socket()
-        csrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        csrsock.setblocking(0)
-        csrsock.bind((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterPort')))
-        csrsock.listen(5)
+def launch_master():
+    #Listen for incoming messages
+    csrsock = socket.socket()
+    csrsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    csrsock.setblocking(0)
+    csrsock.bind((config.get('global', 'MasterAddress'),
+                  config.getint('global', 'MasterPort')))
+    csrsock.listen(5)
 
-        # Listen for sequence requests
-        seqsock = socket.socket()
-        seqsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        seqsock.setblocking(0)
-        seqsock.bind((config.get('global', 'MasterAddress'),
-                      config.getint('global', 'MasterSeqPort')))
-        seqsock.listen(5)
-        sequence = UUIDSequence()
+    # Listen for sequence requests
+    seqsock = socket.socket()
+    seqsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    seqsock.setblocking(0)
+    seqsock.bind((config.get('global', 'MasterAddress'),
+                  config.getint('global', 'MasterSeqPort')))
+    seqsock.listen(5)
+    sequence = UUIDSequence()
 
-        while True:
-            read, write, error = select.select([csrsock, seqsock], [], [])
-            if csrsock in read:
-                sock, src = csrsock.accept()
-                try:
-                    thread = MsgHandlerThread(store, sock, src, cakey, cacert)
-                    thread.name = 'MsgHandlerThread(src=%r)' % (src, )
-                    thread.start()
-                except Exception:
-                    # Close the socket if there are any exceptions. The thread
-                    # will be responsible for closing the socket otherwise.
-                    sock.close()
-            if seqsock in read:
-                with closing(seqsock.accept()[0]) as sock:
-                    sock.send(str(sequence.next()))
+    while True:
+        read, write, error = select.select([csrsock, seqsock], [], [])
+        if csrsock in read:
+            sock, src = csrsock.accept()
+            try:
+                thread = MsgHandlerThread(store, sock, src, cakey, cacert)
+                thread.name = 'MsgHandlerThread(src=%r)' % (src, )
+                thread.start()
+            except Exception:
+                # Close the socket if there are any exceptions. The thread
+                # will be responsible for closing the socket otherwise.
+                sock.close()
+        if seqsock in read:
+            with closing(seqsock.accept()[0]) as sock:
+                sock.send(str(sequence.next()))
 
 
 def check_cacerts(recurse=True):
