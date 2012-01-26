@@ -1,15 +1,9 @@
 [global]
+#LogFacility can be any of the syslog facilities
+LogFacility = LOG_USER
+
 #LogLevel can be one of DEBUG, INFO, WARN, ERR, CRITICAL
 LogLevel = INFO
-
-#File to write logs to
-LogFile = /var/log/certain/certain.log
-
-#Size to grow logfile to before rotation (bytes)
-LogSize = 2000000
-
-#Number of old rotated logfiles to keep
-LogRotate = 5
 
 #Root path for all Certain sub-directories
 RootPath = /etc/certain

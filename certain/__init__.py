@@ -947,21 +947,14 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
             "Unable to read Configuration File: %s" % (configfile, ))
     loglevel = getattr(logging, config.get('global', 'LogLevel'))
     if loglevel == logging.DEBUG:
-        logformat = VerboseExceptionFormatter('%(levelname)s %(message)s')
+        logformat = VerboseExceptionFormatter('%(name)s %(levelname)s %(message)s')
     else:
-        logformat = logging.Formatter('%(levelname)s %(message)s')
+        logformat = logging.Formatter('%(name)s: %(levelname)s %(message)s')
 
-    for handler in log.handlers:
-        if isinstance(handler, logging.handlers.RotatingFileHandler):
-            log.removeHandler(handler)
-            continue
-        handler.setLevel(loglevel)
-        handler.setFormatter(logformat)
-    logfile = logging.handlers.RotatingFileHandler(
-        config.get('global', 'LogFile'),
-        maxBytes=config.getint('global', 'LogSize'),
-        backupCount=config.getint('global', 'LogRotate'))
-    log.addHandler(logfile)
+    syslog = logging.handlers.SysLogHandler(address='/dev/log',
+                                            facility=config.get('global',
+                                                                'LogFacility'))
+    logger.addHandler(syslog)
     log.setLevel(loglevel)
     # Users of this library may have their own reference to config. Return the
     # new ConfigParser so that they may be updated.
