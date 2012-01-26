@@ -959,8 +959,8 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
         handler.setFormatter(logformat)
 
     syslog = logging.handlers.SysLogHandler(address='/dev/log',
-                                            facility=config.get('global',
-                                                                'LogFacility'))
+                                            facility=getattr(logging.handlers.SysLogHandler, config.get('global',
+                                                                'LogFacility')))
     log.addHandler(syslog)
     log.setLevel(loglevel)
     # Users of this library may have their own reference to config. Return the
