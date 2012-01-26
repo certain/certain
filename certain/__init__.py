@@ -961,7 +961,7 @@ def parse_config(configfile=DEFAULT_CONFIG_FILE):
     syslog = logging.handlers.SysLogHandler(address='/dev/log',
                                             facility=config.get('global',
                                                                 'LogFacility'))
-    logger.addHandler(syslog)
+    log.addHandler(syslog)
     log.setLevel(loglevel)
     # Users of this library may have their own reference to config. Return the
     # new ConfigParser so that they may be updated.
